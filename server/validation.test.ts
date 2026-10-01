@@ -49,8 +49,8 @@ const completeAnswers = {
   },
 };
 
-async function withApi<T>(run: (baseUrl: string) => Promise<T>) {
-  const server = createApp({} as Pool).listen(0);
+async function withApi<T>(run: (baseUrl: string) => Promise<T>, database: Pool = {} as Pool) {
+  const server = createApp(database).listen(0);
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const address = server.address() as AddressInfo;
   try {
@@ -145,4 +145,29 @@ test("submit endpoint rejects missing consent before accessing storage", async (
     const result = await response.json() as { invalidFields: string[] };
     assert.ok(result.invalidFields.includes("contact.consent"));
   });
+});
+
+test("health endpoint verifies database connectivity", async () => {
+  let queried = false;
+  const database = {
+    execute: async () => {
+      queried = true;
+      return [[], []];
+    },
+  } as unknown as Pool;
+  await withApi(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/health`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: "ok" });
+  }, database);
+  assert.equal(queried, true);
+});
+
+test("health endpoint returns unavailable when MySQL cannot be reached", async () => {
+  const database = { execute: async () => { throw new Error("database offline"); } } as unknown as Pool;
+  await withApi(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/health`);
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { status: "unavailable" });
+  }, database);
 });

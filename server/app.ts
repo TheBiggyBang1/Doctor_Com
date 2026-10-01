@@ -63,8 +63,13 @@ export function createApp(
   app.disable("x-powered-by");
   app.use(express.json({ limit: "64kb" }));
 
-  app.get("/api/health", (_request, response) => {
-    response.json({ status: "ok" });
+  app.get("/api/health", async (_request, response) => {
+    try {
+      await database.execute("SELECT 1");
+      response.json({ status: "ok" });
+    } catch {
+      response.status(503).json({ status: "unavailable" });
+    }
   });
 
   app.get("/api/questionnaire/draft", async (request, response) => {

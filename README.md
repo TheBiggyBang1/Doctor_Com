@@ -28,6 +28,20 @@ Questionnaire bilingue de qualification des prospects, construit avec React/Vite
 
 Le service Windows déjà installé peut être démarré depuis un terminal administrateur avec `Start-Service MySQL80`.
 
+## Déploiement Docker
+
+1. Sur un hôte Linux avec Docker, créer `.env` à partir de `.env.example`. Définir les identifiants d'un utilisateur MySQL dédié avec les droits de création et de modification du schéma. `MYSQL_HOST` doit être l'adresse réseau du serveur MySQL, pas `127.0.0.1` sauf si MySQL tourne sur le même hôte et est accessible depuis le conteneur.
+2. Construire et lancer l'image :
+
+   ```sh
+   docker build -t doctor-com .
+   docker run -d --name doctor-com --restart unless-stopped --publish 127.0.0.1:3001:3001 --env-file .env doctor-com
+   ```
+
+   Le conteneur construit le frontend et le serveur TypeScript en JavaScript, applique la migration idempotente au démarrage, puis sert les deux depuis le port `3001`. La clé Claude peut rester vide jusqu'à son ajout; la génération de plans échouera jusque-là.
+3. Placer un reverse proxy HTTPS devant `127.0.0.1:3001`, diriger le domaine vers ce proxy, et autoriser l'accès HTTPS uniquement. Le endpoint de santé `/api/health` renvoie `200` lorsque MySQL répond et `503` sinon.
+4. Configurer les sauvegardes MySQL et tester une restauration avant l'ouverture publique. Ne publier jamais le port `3306` sur Internet.
+
 ## Contrôles
 
 ```powershell

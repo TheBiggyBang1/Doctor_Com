@@ -4,11 +4,14 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"vite --config client/vite.config.ts\" \"tsx watch server/index.ts\"",
-    "build": "npm run typecheck:client && npm run typecheck:server && vite build --config client/vite.config.ts",
+    "build": "npm run typecheck:client && npm run typecheck:server && npm run build:server && vite build --config client/vite.config.ts",
+    "build:server": "tsc -p server/tsconfig.json && node scripts/copy-schema.mjs",
     "typecheck:client": "tsc --noEmit -p client/tsconfig.json",
     "typecheck:server": "tsc --noEmit -p server/tsconfig.json",
-    "start:server": "tsx server/index.ts",
+    "start": "node dist/server/index.js",
+    "start:server": "node dist/server/index.js",
     "db:setup": "tsx server/setupDatabase.ts",
+    "db:migrate": "node dist/server/setupDatabase.js",
     "test": "tsx --test server/validation.test.ts server/scoring.test.ts server/plan.test.ts server/pdf.test.ts server/reportJobs.test.ts"
   },
   "dependencies": {
