@@ -16,6 +16,11 @@ function parseAnswers(value: QuestionnaireAnswers | string) {
   return typeof value === "string" ? JSON.parse(value) as QuestionnaireAnswers : value;
 }
 
+function describeFailure(error: unknown) {
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return message.replace(/\bsk-ant-[A-Za-z0-9_-]+\b/g, "[redacted API key]").slice(0, 500);
+}
+
 export function createReportJobs(database: SqliteDatabase, generatePlan: PlanGenerator = generateCommunicationPlan) {
   const active = new Set<number>();
 
@@ -41,7 +46,7 @@ export function createReportJobs(database: SqliteDatabase, generatePlan: PlanGen
         markdown, id,
       );
       return true;
-    } catch {
+    } catch (error) {
       try {
         database.run(
           "UPDATE questionnaire_submissions SET report_status = 'failed', report_markdown = NULL WHERE id = ? AND report_status = 'processing'",
@@ -50,7 +55,7 @@ export function createReportJobs(database: SqliteDatabase, generatePlan: PlanGen
       } catch {
         // Keep the provider failure isolated from the request path.
       }
-      console.error(`Communication plan generation failed for submission ${id}.`);
+      console.error(`Communication plan generation failed for submission ${id}: ${describeFailure(error)}`);
       return false;
     } finally {
       active.delete(id);

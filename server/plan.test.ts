@@ -27,6 +27,19 @@ test("plan prompt selects the requested language and lead detail tier", () => {
   assert.match(prompt, /in English/);
   assert.match(prompt, /2-3 designed pages/);
   assert.match(prompt, /formal second person/);
+  assert.match(prompt, /two highest-value channels/);
+  assert.match(prompt, /30-day validation roadmap/);
+  assert.match(prompt, /never mention the letter, score, or qualification process/);
+});
+
+test("plan prompt defines complete A and B deliverables", () => {
+  const tierA = buildCommunicationPrompt(privateData, "A", "fr");
+  const tierB = buildCommunicationPrompt(privateData, "B", "fr");
+
+  assert.match(tierA, /two distinct priority personas, 3-4 measurable SMART objectives, 4-6 justified channels/);
+  assert.match(tierB, /one primary persona.*3 SMART objectives, 3-4 prioritized channels/s);
+  assert.match(tierA, /compact Markdown table/);
+  assert.match(tierB, /omit a section rather than leaving it empty/);
 });
 
 test("questionnaire text cannot escape the untrusted-data prompt boundary", () => {
@@ -53,7 +66,7 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
         id: "msg_test",
         type: "message",
         role: "assistant",
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         content: [{ type: "text", text: "# Votre stratégie\n\nUne recommandation claire." }],
         stop_reason: "end_turn",
         stop_sequence: null,
@@ -73,9 +86,9 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
     const plan = await generateCommunicationPlan(privateData, "B", "fr");
     assert.match(plan, /Votre stratégie/);
     assert.equal(receivedApiKey, "local-test-key");
-    assert.equal(receivedBody?.model, "claude-sonnet-4-20250514");
+    assert.equal(receivedBody?.model, "claude-sonnet-4-6");
     const messages = receivedBody?.messages as Array<{ content: string }>;
-    assert.match(messages[0].content, /qualified lead in category B/);
+    assert.match(messages[0].content, /Internal qualification tier: B/);
     assert.ok(!messages[0].content.includes("amira.private@example.com"));
   } finally {
     if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;

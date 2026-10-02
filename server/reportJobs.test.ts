@@ -25,16 +25,26 @@ test("report job claims a pending submission and persists only generated markdow
 
 test("report job marks a failed generation without leaking provider details", async () => {
   const statements: string[] = [];
+  const errors: string[] = [];
   const database = {
     run: (sql: string) => {
       statements.push(sql);
       return { changes: 1 };
     },
   } as unknown as SqliteDatabase;
-  const jobs = createReportJobs(database, async () => { throw new Error("provider-secret-detail"); });
-  const succeeded = await jobs.run(8, {} as QuestionnaireAnswers, "C", "en");
+  const jobs = createReportJobs(database, async () => { throw new Error("provider-secret-detail sk-ant-test-secret"); });
+  const originalConsoleError = console.error;
+  console.error = (message: string) => errors.push(message);
+  let succeeded: boolean;
+  try {
+    succeeded = await jobs.run(8, {} as QuestionnaireAnswers, "C", "en");
+  } finally {
+    console.error = originalConsoleError;
+  }
 
   assert.equal(succeeded, false);
   assert.match(statements[1], /report_status = 'failed'/);
   assert.ok(!statements.some((statement) => statement.includes("provider-secret-detail")));
+  assert.match(errors[0], /provider-secret-detail/);
+  assert.ok(!errors[0].includes("sk-ant-test-secret"));
 });
