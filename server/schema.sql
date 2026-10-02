@@ -1,31 +1,32 @@
-CREATE DATABASE IF NOT EXISTS `doctor_com`
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS questionnaire_submissions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  resume_token_hash TEXT NOT NULL UNIQUE,
+  language TEXT NOT NULL DEFAULT 'fr' CHECK (language IN ('fr', 'en')),
+  current_step INTEGER NOT NULL DEFAULT 1,
+  answers TEXT NOT NULL CHECK (json_valid(answers)),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted')),
+  score_total INTEGER,
+  score_budget INTEGER,
+  score_urgency INTEGER,
+  score_company INTEGER,
+  lead_category TEXT CHECK (lead_category IS NULL OR lead_category IN ('A', 'B', 'C')),
+  scored_at TEXT,
+  report_status TEXT NOT NULL DEFAULT 'not_started' CHECK (report_status IN ('not_started', 'pending', 'processing', 'ready', 'failed')),
+  report_markdown TEXT,
+  report_generated_at TEXT,
+  consent_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  submitted_at TEXT
+);
 
-USE `doctor_com`;
+CREATE INDEX IF NOT EXISTS idx_questionnaire_status_updated ON questionnaire_submissions (status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_questionnaire_report_status ON questionnaire_submissions (report_status, id);
 
-CREATE TABLE IF NOT EXISTS `questionnaire_submissions` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `resume_token_hash` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `language` ENUM('fr', 'en') NOT NULL DEFAULT 'fr',
-  `current_step` TINYINT UNSIGNED NOT NULL DEFAULT 1,
-  `answers` JSON NOT NULL,
-  `status` ENUM('draft', 'submitted') NOT NULL DEFAULT 'draft',
-  `score_total` TINYINT UNSIGNED NULL,
-  `score_budget` TINYINT UNSIGNED NULL,
-  `score_urgency` TINYINT UNSIGNED NULL,
-  `score_company` TINYINT UNSIGNED NULL,
-  `lead_category` ENUM('A', 'B', 'C') NULL,
-  `scored_at` DATETIME(3) NULL,
-  `report_status` ENUM('not_started', 'pending', 'processing', 'ready', 'failed') NOT NULL DEFAULT 'not_started',
-  `report_markdown` MEDIUMTEXT NULL,
-  `report_generated_at` DATETIME(3) NULL,
-  `consent_at` DATETIME(3) NULL,
-  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-  `submitted_at` DATETIME(3) NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_questionnaire_resume_token_hash` (`resume_token_hash`),
-  KEY `idx_questionnaire_status_updated` (`status`, `updated_at`),
-  KEY `idx_questionnaire_report_status` (`report_status`, `id`)
-) ENGINE=InnoDB;
+CREATE TRIGGER IF NOT EXISTS questionnaire_submissions_updated_at
+AFTER UPDATE ON questionnaire_submissions
+FOR EACH ROW
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE questionnaire_submissions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;

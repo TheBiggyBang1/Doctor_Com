@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { Pool, ResultSetHeader } from "mysql2/promise";
+import type { SqliteDatabase } from "./database.js";
 import { createReportJobs } from "./reportJobs.js";
 import type { QuestionnaireAnswers } from "./validation.js";
 
 test("report job claims a pending submission and persists only generated markdown", async () => {
   const statements: string[] = [];
   const database = {
-    execute: async (sql: string) => {
+    run: (sql: string) => {
       statements.push(sql);
-      return [{ affectedRows: 1 } as ResultSetHeader, []];
+      return { changes: 1 };
     },
-  } as unknown as Pool;
+  } as unknown as SqliteDatabase;
   const generatePlan = async () => "# Plan\n\nGenerated strategy.";
   const jobs = createReportJobs(database, generatePlan as never);
   const succeeded = await jobs.run(7, {} as QuestionnaireAnswers, "B", "fr");
@@ -26,11 +26,11 @@ test("report job claims a pending submission and persists only generated markdow
 test("report job marks a failed generation without leaking provider details", async () => {
   const statements: string[] = [];
   const database = {
-    execute: async (sql: string) => {
+    run: (sql: string) => {
       statements.push(sql);
-      return [{ affectedRows: 1 } as ResultSetHeader, []];
+      return { changes: 1 };
     },
-  } as unknown as Pool;
+  } as unknown as SqliteDatabase;
   const jobs = createReportJobs(database, async () => { throw new Error("provider-secret-detail"); });
   const succeeded = await jobs.run(8, {} as QuestionnaireAnswers, "C", "en");
 

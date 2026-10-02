@@ -1,22 +1,58 @@
 import "dotenv/config";
-import { createPool } from "mysql2/promise";
+import Database from "better-sqlite3";
+import { mkdirSync, readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-export const pool = createPool({
-  host: process.env.MYSQL_HOST ?? "127.0.0.1",
-  port: Number(process.env.MYSQL_PORT ?? 3306),
-  user: process.env.MYSQL_USER ?? "root",
-  password: process.env.MYSQL_PASSWORD ?? "",
-  database: process.env.MYSQL_DATABASE ?? "doctor_com",
-  connectionLimit: Number(process.env.MYSQL_CONNECTION_LIMIT ?? 10),
-  waitForConnections: true,
-  queueLimit: 0,
-  timezone: "Z",
-});
+export interface SqliteDatabase {
+  all<T>(sql: string, ...parameters: unknown[]): T[];
+  get<T>(sql: string, ...parameters: unknown[]): T | undefined;
+  run(sql: string, ...parameters: unknown[]): { changes: number };
+  transaction<T>(operation: () => T): T;
+  close(): void;
+}
+
+const databasePath = resolve(process.env.DATABASE_PATH ?? "data/doctor_com.sqlite");
+mkdirSync(dirname(databasePath), { recursive: true });
+
+const sqlite = new Database(databasePath);
+sqlite.pragma("journal_mode = WAL");
+sqlite.pragma("foreign_keys = ON");
+sqlite.exec(awaitSchema());
+
+function awaitSchema() {
+  const schemaPath = fileURLToPath(new URL("./schema.sql", import.meta.url));
+  return readFileSync(schemaPath, "utf8");
+}
+
+function bindParameters(parameters: unknown[]) {
+  return parameters as (string | number | bigint | Buffer | null)[];
+}
+
+export const database: SqliteDatabase = {
+  all<T>(sql: string, ...parameters: unknown[]) {
+    return sqlite.prepare(sql).all(...bindParameters(parameters)) as T[];
+  },
+  get<T>(sql: string, ...parameters: unknown[]) {
+    return sqlite.prepare(sql).get(...bindParameters(parameters)) as T | undefined;
+  },
+  run(sql: string, ...parameters: unknown[]) {
+    const result = sqlite.prepare(sql).run(...bindParameters(parameters));
+    return { changes: result.changes };
+  },
+  transaction<T>(operation: () => T) {
+    return sqlite.transaction(operation)();
+  },
+  close() {
+    sqlite.close();
+  },
+};
 
 export async function purgeExpiredDrafts() {
   const configuredDays = Number(process.env.DRAFT_TTL_DAYS ?? 30);
   const days = Number.isFinite(configuredDays) ? Math.min(365, Math.max(1, Math.floor(configuredDays))) : 30;
-  await pool.execute(
-    `DELETE FROM questionnaire_submissions WHERE status = 'draft' AND updated_at < DATE_SUB(UTC_TIMESTAMP(3), INTERVAL ${days} DAY)`,
+  database.run(
+    "DELETE FROM questionnaire_submissions WHERE status = 'draft' AND datetime(updated_at) < datetime('now', ?)",
+    `-${days} days`,
   );
 }

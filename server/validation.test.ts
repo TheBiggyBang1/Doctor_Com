@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
-import type { Pool } from "mysql2/promise";
+import type { SqliteDatabase } from "./database.js";
 import { createApp } from "./app.js";
 import { draftPayloadSchema, validateSubmission } from "./validation.js";
 
@@ -49,7 +49,7 @@ const completeAnswers = {
   },
 };
 
-async function withApi<T>(run: (baseUrl: string) => Promise<T>, database: Pool = {} as Pool) {
+async function withApi<T>(run: (baseUrl: string) => Promise<T>, database: SqliteDatabase = {} as SqliteDatabase) {
   const server = createApp(database).listen(0);
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const address = server.address() as AddressInfo;
@@ -150,7 +150,7 @@ test("submit endpoint rejects missing consent before accessing storage", async (
 test("health endpoint verifies database connectivity", async () => {
   let queried = false;
   const database = {
-    execute: async () => {
+    get: () => {
       queried = true;
       return [[], []];
     },
@@ -163,8 +163,8 @@ test("health endpoint verifies database connectivity", async () => {
   assert.equal(queried, true);
 });
 
-test("health endpoint returns unavailable when MySQL cannot be reached", async () => {
-  const database = { execute: async () => { throw new Error("database offline"); } } as unknown as Pool;
+test("health endpoint returns unavailable when SQLite cannot be reached", async () => {
+  const database = { get: () => { throw new Error("database offline"); } } as unknown as SqliteDatabase;
   await withApi(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/health`);
     assert.equal(response.status, 503);

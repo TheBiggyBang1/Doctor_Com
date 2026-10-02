@@ -3,12 +3,12 @@ import express from "express";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApp } from "./app.js";
-import { pool, purgeExpiredDrafts } from "./database.js";
+import { database, purgeExpiredDrafts } from "./database.js";
 import { createReportJobs } from "./reportJobs.js";
 
 const port = Number(process.env.PORT ?? 3001);
-const reportJobs = createReportJobs(pool);
-const app = createApp(pool, { reportJobs });
+const reportJobs = createReportJobs(database);
+const app = createApp(database, { reportJobs });
 
 if (process.env.NODE_ENV === "production") {
   const clientDirectory = fileURLToPath(new URL("../client/", import.meta.url));
@@ -23,7 +23,7 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-await pool.query("SELECT 1");
+database.get("SELECT 1");
 
 const httpServer = app.listen(port, "0.0.0.0", () => {
   console.log(`Doctor Com API listening on port ${port}`);
@@ -39,7 +39,7 @@ void reportJobs.resumePending().catch(() => console.warn("Could not resume pendi
 function shutdown() {
   clearInterval(purgeTimer);
   httpServer.close(() => {
-    void pool.end();
+    database.close();
   });
 }
 

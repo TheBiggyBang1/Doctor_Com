@@ -14,7 +14,7 @@ const privateData: QuestionnaireAnswers = {
   contact: { fullName: "Amira Exemple", role: "Fondatrice", email: "amira.private@example.com", phone: "+216 22123456", consent: true },
 };
 
-test("Claude prompt excludes contact information and the declared budget", () => {
+test("plan prompt excludes contact information and the declared budget", () => {
   const prompt = buildCommunicationPrompt(privateData, "A", "fr");
   assert.match(prompt, /Studio Exemple/);
   assert.match(prompt, /declared budget.*confidential/i);
@@ -22,7 +22,7 @@ test("Claude prompt excludes contact information and the declared budget", () =>
   assert.doesNotMatch(prompt, /marketingBudgetInvested|monthly/);
 });
 
-test("Claude prompt selects the requested language and lead detail tier", () => {
+test("plan prompt selects the requested language and lead detail tier", () => {
   const prompt = buildCommunicationPrompt(privateData, "C", "en");
   assert.match(prompt, /in English/);
   assert.match(prompt, /2-3 designed pages/);
@@ -38,7 +38,7 @@ test("questionnaire text cannot escape the untrusted-data prompt boundary", () =
   assert.match(prompt, /\\u003c\/questionnaire_data>/);
 });
 
-test("official Anthropic SDK sends the tiered prompt and returns plan text", async () => {
+test("Anthropic SDK sends the tiered prompt and returns plan text", async () => {
   let receivedBody: Record<string, unknown> | undefined;
   let receivedApiKey = "";
   const server = createServer((request, response) => {

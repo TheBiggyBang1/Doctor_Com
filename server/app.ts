@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import express, { type Request, type Response } from "express";
-import type { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { SqliteDatabase } from "./database.js";
 import { renderPlanPdf } from "./pdf.js";
 import { createReportJobs, type PlanGenerator } from "./reportJobs.js";
 import { calculateLeadScore, type LeadCategory } from "./scoring.js";
@@ -10,7 +10,7 @@ const cookieName = "doctor_com_draft";
 const configuredDays = Number(process.env.DRAFT_TTL_DAYS ?? 30);
 const cookieAge = (Number.isFinite(configuredDays) ? Math.min(365, Math.max(1, configuredDays)) : 30) * 24 * 60 * 60 * 1000;
 
-interface DraftRow extends RowDataPacket {
+interface DraftRow {
   id: number;
   language: "fr" | "en";
   current_step: number;
@@ -55,7 +55,7 @@ function tokenHash(token: string) {
 }
 
 export function createApp(
-  database: Pool,
+  database: SqliteDatabase,
   options: { reportJobs?: ReturnType<typeof createReportJobs>; generatePlan?: PlanGenerator } = {},
 ) {
   const app = express();
@@ -65,7 +65,7 @@ export function createApp(
 
   app.get("/api/health", async (_request, response) => {
     try {
-      await database.execute("SELECT 1");
+      database.get("SELECT 1");
       response.json({ status: "ok" });
     } catch {
       response.status(503).json({ status: "unavailable" });
@@ -79,16 +79,16 @@ export function createApp(
       return;
     }
     try {
-      const [rows] = await database.execute<DraftRow[]>(
+      const row = database.get<DraftRow>(
         "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? LIMIT 1",
-        [tokenHash(token)],
+        tokenHash(token),
       );
-      if (!rows[0]) {
+      if (!row) {
         response.clearCookie(cookieName, { httpOnly: true, sameSite: "lax", path: "/api" });
         response.json({ draft: null });
         return;
       }
-      response.json({ draft: draftResponse(rows[0]) });
+      response.json({ draft: draftResponse(row) });
     } catch {
       response.status(503).json({ error: "storage_unavailable" });
     }
@@ -103,21 +103,21 @@ export function createApp(
     try {
       const currentToken = readResumeToken(request);
       if (currentToken) {
-        const [rows] = await database.execute<DraftRow[]>(
+        const row = database.get<DraftRow>(
           "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? LIMIT 1",
-          [tokenHash(currentToken)],
+          tokenHash(currentToken),
         );
-        if (rows[0]?.status === "draft") {
+        if (row?.status === "draft") {
           setResumeCookie(response, currentToken);
-          response.json({ draft: draftResponse(rows[0]) });
+          response.json({ draft: draftResponse(row) });
           return;
         }
       }
 
       const token = randomBytes(32).toString("base64url");
-      await database.execute(
+      database.run(
         "INSERT INTO questionnaire_submissions (resume_token_hash, language, current_step, answers, status) VALUES (?, ?, ?, ?, 'draft')",
-        [tokenHash(token), parsed.data.language, parsed.data.currentStep, JSON.stringify(parsed.data.answers)],
+        tokenHash(token), parsed.data.language, parsed.data.currentStep, JSON.stringify(parsed.data.answers),
       );
       setResumeCookie(response, token);
       response.status(201).json({ draft: { ...parsed.data, status: "draft", reportStatus: "not_started" } });
@@ -138,11 +138,11 @@ export function createApp(
       return;
     }
     try {
-      const [result] = await database.execute<ResultSetHeader>(
+      const result = database.run(
         "UPDATE questionnaire_submissions SET language = ?, current_step = ?, answers = ? WHERE resume_token_hash = ? AND status = 'draft'",
-        [parsed.data.language, parsed.data.currentStep, JSON.stringify(parsed.data.answers), tokenHash(token)],
+        parsed.data.language, parsed.data.currentStep, JSON.stringify(parsed.data.answers), tokenHash(token),
       );
-      if (result.affectedRows === 0) {
+      if (result.changes === 0) {
         response.status(404).json({ error: "draft_not_found" });
         return;
       }
@@ -169,38 +169,33 @@ export function createApp(
       return;
     }
 
-    let connection: PoolConnection | undefined;
     try {
-      connection = await database.getConnection();
-      await connection.beginTransaction();
-      const [rows] = await connection.execute<DraftRow[]>(
-        "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? FOR UPDATE",
-        [tokenHash(token)],
-      );
-      const draft = rows[0];
-      if (!draft) {
-        await connection.rollback();
+      const score = calculateLeadScore(validation.data);
+      const outcome = database.transaction(() => {
+        const draft = database.get<DraftRow>(
+          "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ?",
+          tokenHash(token),
+        );
+        if (!draft) return { status: "missing" as const };
+        if (draft.status === "submitted") return { status: "already_submitted" as const, reportStatus: draft.report_status };
+        database.run(
+          "UPDATE questionnaire_submissions SET language = ?, current_step = ?, answers = ?, status = 'submitted', score_total = ?, score_budget = ?, score_urgency = ?, score_company = ?, lead_category = ?, scored_at = CURRENT_TIMESTAMP, report_status = 'pending', report_markdown = NULL, report_generated_at = NULL, consent_at = CURRENT_TIMESTAMP, submitted_at = CURRENT_TIMESTAMP WHERE resume_token_hash = ? AND status = 'draft'",
+          payload.data.language, payload.data.currentStep, JSON.stringify(validation.data), score.total, score.budgetScore, score.urgencyScore, score.companyScore, score.category, tokenHash(token),
+        );
+        return { status: "submitted" as const, id: draft.id };
+      });
+      if (outcome.status === "missing") {
         response.status(404).json({ error: "draft_not_found" });
         return;
       }
-      if (draft.status === "submitted") {
-        await connection.commit();
-        response.json({ status: "submitted", reportStatus: draft.report_status });
+      if (outcome.status === "already_submitted") {
+        response.json({ status: "submitted", reportStatus: outcome.reportStatus });
         return;
       }
-      const score = calculateLeadScore(validation.data);
-      await connection.execute(
-        "UPDATE questionnaire_submissions SET language = ?, current_step = ?, answers = ?, status = 'submitted', score_total = ?, score_budget = ?, score_urgency = ?, score_company = ?, lead_category = ?, scored_at = CURRENT_TIMESTAMP(3), report_status = 'pending', report_markdown = NULL, report_generated_at = NULL, consent_at = CURRENT_TIMESTAMP(3), submitted_at = CURRENT_TIMESTAMP(3) WHERE resume_token_hash = ? AND status = 'draft'",
-        [payload.data.language, payload.data.currentStep, JSON.stringify(validation.data), score.total, score.budgetScore, score.urgencyScore, score.companyScore, score.category, tokenHash(token)],
-      );
-      await connection.commit();
       response.status(202).json({ status: "submitted", reportStatus: "pending" });
-      void reportJobs.run(draft.id, validation.data, score.category, payload.data.language);
+      void reportJobs.run(outcome.id, validation.data, score.category, payload.data.language);
     } catch {
-      if (connection) await connection.rollback().catch(() => undefined);
       response.status(503).json({ error: "storage_unavailable" });
-    } finally {
-      connection?.release();
     }
   });
 
@@ -211,16 +206,16 @@ export function createApp(
       return;
     }
     try {
-      const [rows] = await database.execute<DraftRow[]>(
+      const row = database.get<DraftRow>(
         "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? AND status = 'submitted' LIMIT 1",
-        [tokenHash(token)],
+        tokenHash(token),
       );
-      if (!rows[0]) {
+      if (!row) {
         response.status(404).json({ error: "report_not_found" });
         return;
       }
       response.setHeader("Cache-Control", "private, no-store");
-      response.json({ reportStatus: rows[0].report_status });
+      response.json({ reportStatus: row.report_status });
     } catch {
       response.status(503).json({ error: "storage_unavailable" });
     }
@@ -233,11 +228,10 @@ export function createApp(
       return;
     }
     try {
-      const [rows] = await database.execute<DraftRow[]>(
+      const report = database.get<DraftRow>(
         "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? AND status = 'submitted' LIMIT 1",
-        [tokenHash(token)],
+        tokenHash(token),
       );
-      const report = rows[0];
       if (!report || report.report_status !== "ready" || !report.report_markdown) {
         response.status(report ? 409 : 404).json({ error: report ? "report_not_ready" : "report_not_found" });
         return;
@@ -258,11 +252,10 @@ export function createApp(
       return;
     }
     try {
-      const [rows] = await database.execute<DraftRow[]>(
+      const submission = database.get<DraftRow>(
         "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? AND status = 'submitted' LIMIT 1",
-        [tokenHash(token)],
+        tokenHash(token),
       );
-      const submission = rows[0];
       if (!submission) {
         response.status(404).json({ error: "report_not_found" });
         return;
@@ -275,11 +268,11 @@ export function createApp(
         response.status(409).json({ error: "score_missing" });
         return;
       }
-      const [updated] = await database.execute<ResultSetHeader>(
+      const updated = database.run(
         "UPDATE questionnaire_submissions SET report_status = 'pending' WHERE id = ? AND report_status = 'failed'",
-        [submission.id],
+        submission.id,
       );
-      if (updated.affectedRows === 0) {
+      if (updated.changes === 0) {
         response.status(409).json({ error: "report_not_retryable" });
         return;
       }
