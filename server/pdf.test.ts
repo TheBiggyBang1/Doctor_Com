@@ -6,6 +6,7 @@ test("renders the generated plan as an in-memory PDF", async () => {
   const pdf = await renderPlanPdf("# Diagnostic\n\n## Positionnement\nUne stratégie claire pour votre entreprise.\n\n- Premier axe stratégique\n- Deuxième axe stratégique");
   assert.equal(pdf.subarray(0, 5).toString("ascii"), "%PDF-");
   assert.ok(pdf.byteLength > 1000);
+  assert.equal([...pdf.toString("latin1").matchAll(/\/Type\s*\/Page\b/g)].length, 1);
 });
 
 test("renders Markdown table content instead of dropping its rows", async () => {

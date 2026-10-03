@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 
 function plainMarkdown(text: string) {
   return text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)")
     .replace(/\*\*(.+?)\*\*/g, "$1")
     .replace(/__(.+?)__/g, "$1")
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "$1")
@@ -113,7 +113,9 @@ export function renderPlanPdf(markdown: string): Promise<Buffer> {
       document.moveTo(58, footerTop).lineTo(document.page.width - 58, footerTop).lineWidth(0.5).strokeColor("#E7E2D8").stroke();
       document.fillColor("#74777C").font("Helvetica").fontSize(8)
         .text("5 Sens Advertising  ·  Document confidentiel", 58, footerTop + 10, { lineBreak: false });
-      document.text(`${index + 1} / ${pages.count}`, document.page.width - 100, footerTop + 10, { width: 42, align: "right", lineBreak: false });
+      const pageLabel = `${index + 1} / ${pages.count}`;
+      const pageLabelX = document.page.width - 58 - document.widthOfString(pageLabel);
+      document.text(pageLabel, pageLabelX, footerTop + 10, { lineBreak: false });
     }
 
     document.end();

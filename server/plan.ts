@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { CitationsWebSearchResultLocation } from "@anthropic-ai/sdk/resources/messages";
 import type { LeadCategory } from "./scoring.js";
 import type { QuestionnaireAnswers } from "./validation.js";
 
@@ -131,6 +132,10 @@ export function buildCommunicationPrompt(
     B: "Tier B: focused strategic plan, approximately 1,000-1,400 words (5-6 designed pages). Develop one primary persona (and a secondary only if supported by the data), 3 SMART objectives, 3-4 prioritized channels, a practical 90-day roadmap, KPIs, and a staged agency/media work split.",
     C: "Tier C: concise strategic plan, approximately 500-700 words (2-3 designed pages). Focus on one best-fit persona, 2 realistic SMART objectives, the two highest-value channels, a low-risk 30-day validation roadmap, a short KPI set, and a modular path to scale if results justify it.",
   }[category];
+  const researchInstructions = category === "A" ? [
+    "For this Tier A plan, use the web_search tool to research 2-3 real competitors serving the client's stated geography and audience. Verify any competitors named in the questionnaire before using them. Prefer official company websites and active public company profiles; compare positioning, target audience, visible services, public channels, and verifiable differentiators. Do not infer private performance, market share, ad spend, or prices. Distinguish sourced facts from strategic interpretation, cite factual claims with Markdown links to the returned URLs, and state clearly when evidence is unavailable or a comparison is uncertain.",
+    "Include a concise competitor benchmark table with competitor, observed positioning, public channel/activity, evidence-based strength or gap, and source link. Draw actionable opportunities for this client from the comparison without copying competitors. If web search returns no reliable sources, do not fabricate a benchmark; say the public evidence was insufficient and give a research checklist for kickoff instead.",
+  ] : [];
 
   return [
     `Create a ${language === "fr" ? "communication strategy" : "communications strategy"}. Internal qualification tier: ${category}. ${detail} The tier is internal context only: never mention the letter, score, or qualification process in the client-facing plan.`,
@@ -141,6 +146,7 @@ export function buildCommunicationPrompt(
     "In Channel strategy, include a compact Markdown table with at most four columns: channel, strategic role, priority action, success metric. In the roadmap, use a compact Markdown table with phase/timeframe, actions, and expected outcome. Keep cells concise, ensure every row has all columns, and follow each table with a brief interpretation. Do not use HTML.",
     "For SMART objectives, state a measurable metric and timeframe. If no baseline or target can be responsibly inferred, label it as a proposed target to validate during kickoff instead of inventing historical data. Tie each recommendation to a stated questionnaire fact or label the assumption.",
     "Stay at strategic level. Do not provide final advertising copy, finished scripts, production-ready creative, or mockups. Prioritize actions that fit this lead's company size, sector, goals, audience, current channels, and timing. Scale the breadth and pace to the internal tier without assuming facts not present in the questionnaire.",
+    ...researchInstructions,
     `Write the complete deliverable in ${language === "fr" ? "French" : "English"}. Return only the finished client-facing plan in Markdown, with no preamble or process notes. Use natural, specific language and keep the scope and detail proportional to the internal tier.`,
     `<questionnaire_data>\n${JSON.stringify(context, null, 2).replace(/</g, "\\u003c")}\n</questionnaire_data>`,
   ].join("\n\n");
@@ -159,12 +165,19 @@ export async function generateCommunicationPlan(
     model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
     max_tokens: category === "A" ? 5500 : category === "B" ? 3500 : 1800,
     messages: [{ role: "user", content: buildCommunicationPrompt(answers, category, language) }],
+    ...(category === "A" ? { tools: [{ type: "web_search_20250305" as const, name: "web_search" as const, max_uses: 5 }] } : {}),
   });
-  const markdown = response.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("\n\n")
-    .trim();
+  const textBlocks = response.content.filter((block) => block.type === "text");
+  const markdown = textBlocks.map((block) => block.text).join("\n\n").trim();
   if (!markdown) throw new Error("Claude returned an empty communication plan");
-  return markdown;
+
+  if (category !== "A") return markdown;
+  const citations = textBlocks.flatMap((block) => block.citations ?? [])
+    .filter((citation): citation is CitationsWebSearchResultLocation =>
+      citation.type === "web_search_result_location" && /^https?:\/\//i.test(citation.url));
+  const sources = [...new Map(citations.map((citation) => [citation.url, citation.title || citation.url])).entries()];
+  if (sources.length === 0) return markdown;
+
+  const heading = language === "fr" ? "## Sources consultées" : "## Sources consulted";
+  return `${markdown}\n\n${heading}\n\n${sources.map(([url, title]) => `- [${title}](${url})`).join("\n")}`;
 }

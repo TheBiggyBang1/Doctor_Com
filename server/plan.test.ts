@@ -37,7 +37,10 @@ test("plan prompt defines complete A and B deliverables", () => {
   const tierB = buildCommunicationPrompt(privateData, "B", "fr");
 
   assert.match(tierA, /two distinct priority personas, 3-4 measurable SMART objectives, 4-6 justified channels/);
+  assert.match(tierA, /use the web_search tool to research 2-3 real competitors/);
+  assert.match(tierA, /competitor benchmark table/);
   assert.match(tierB, /one primary persona.*3 SMART objectives, 3-4 prioritized channels/s);
+  assert.doesNotMatch(tierB, /web_search/);
   assert.match(tierA, /compact Markdown table/);
   assert.match(tierB, /omit a section rather than leaving it empty/);
 });
@@ -59,6 +62,8 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
     request.on("end", () => {
       receivedBody = JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
+      const message = receivedBody.messages as Array<{ content: string }>;
+      const tierARequest = message[0].content.includes("Internal qualification tier: A");
       const apiKeyHeader = request.headers["x-api-key"];
       receivedApiKey = Array.isArray(apiKeyHeader) ? apiKeyHeader[0] ?? "" : apiKeyHeader ?? "";
       response.writeHead(200, { "content-type": "application/json" });
@@ -67,7 +72,17 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
         type: "message",
         role: "assistant",
         model: "claude-sonnet-4-6",
-        content: [{ type: "text", text: "# Votre stratégie\n\nUne recommandation claire." }],
+        content: [{
+          type: "text",
+          text: "# Votre stratégie\n\nUne recommandation claire.",
+          citations: tierARequest ? [{
+            type: "web_search_result_location",
+            cited_text: "Positioning for artisan products",
+            encrypted_index: "encrypted-source-index",
+            title: "Competitor positioning",
+            url: "https://competitor.example/positioning",
+          }] : null,
+        }],
         stop_reason: "end_turn",
         stop_sequence: null,
         usage: { input_tokens: 12, output_tokens: 15 },
@@ -90,6 +105,15 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
     const messages = receivedBody?.messages as Array<{ content: string }>;
     assert.match(messages[0].content, /Internal qualification tier: B/);
     assert.ok(!messages[0].content.includes("amira.private@example.com"));
+    assert.equal(receivedBody?.tools, undefined);
+
+    const researchedPlan = await generateCommunicationPlan(privateData, "A", "fr");
+    const tools = receivedBody?.tools as Array<{ type: string; name: string; max_uses: number }>;
+    const tierAMessages = receivedBody?.messages as Array<{ content: string }>;
+    assert.deepEqual(tools, [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }]);
+    assert.match(tierAMessages[0].content, /benchmark table/);
+    assert.match(researchedPlan, /## Sources consultées/);
+    assert.match(researchedPlan, /\[Competitor positioning\]\(https:\/\/competitor\.example\/positioning\)/);
   } finally {
     if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
     else process.env.ANTHROPIC_API_KEY = previousKey;
