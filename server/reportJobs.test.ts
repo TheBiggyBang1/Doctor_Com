@@ -19,8 +19,8 @@ test("report job claims a pending submission and persists only generated markdow
 
   assert.equal(succeeded, true);
   assert.match(statements[0], /report_status = 'processing'/);
-  assert.match(statements[1], /report_html = \?/);
-  assert.match(statements[1], /report_pdf = \?/);
+  assert.match(statements[1], /report_html = \$1/);
+  assert.match(statements[1], /report_pdf = \$2/);
   assert.match(statements[1], /report_status = 'ready'/);
   assert.equal(statements.length, 2);
 });

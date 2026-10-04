@@ -39,8 +39,8 @@ export function createReportJobs(
     if (active.has(id)) return false;
     active.add(id);
     try {
-      const claim = database.run(
-        "UPDATE questionnaire_submissions SET report_status = 'processing' WHERE id = ? AND status = 'submitted' AND report_status = 'pending'",
+      const claim = await database.run(
+        "UPDATE questionnaire_submissions SET report_status = 'processing' WHERE id = $1 AND status = 'submitted' AND report_status = 'pending'",
         id,
       );
       if (claim.changes === 0) return false;
@@ -48,15 +48,15 @@ export function createReportJobs(
       const html = await generatePlan(answers, category, language);
       if (html.length > 200_000) throw new Error("Generated plan exceeded storage limit");
       const pdf = await compilePdf(html, language);
-      database.run(
-        "UPDATE questionnaire_submissions SET report_status = 'ready', report_markdown = NULL, report_html = ?, report_pdf = ?, report_generated_at = CURRENT_TIMESTAMP WHERE id = ? AND report_status = 'processing'",
+      await database.run(
+        "UPDATE questionnaire_submissions SET report_status = 'ready', report_markdown = NULL, report_html = $1, report_pdf = $2, report_generated_at = CURRENT_TIMESTAMP WHERE id = $3 AND report_status = 'processing'",
         html, pdf, id,
       );
       return true;
     } catch (error) {
       try {
-        database.run(
-          "UPDATE questionnaire_submissions SET report_status = 'failed', report_markdown = NULL, report_html = NULL, report_pdf = NULL WHERE id = ? AND report_status = 'processing'",
+        await database.run(
+          "UPDATE questionnaire_submissions SET report_status = 'failed', report_markdown = NULL, report_html = NULL, report_pdf = NULL WHERE id = $1 AND report_status = 'processing'",
           id,
         );
       } catch {
@@ -70,10 +70,10 @@ export function createReportJobs(
   }
 
   async function resumePending() {
-    database.run(
+    await database.run(
       "UPDATE questionnaire_submissions SET report_status = 'pending' WHERE status = 'submitted' AND report_status = 'processing'",
     );
-    const rows = database.all<PendingReportRow>(
+    const rows = await database.all<PendingReportRow>(
       "SELECT id, language, lead_category, answers FROM questionnaire_submissions WHERE status = 'submitted' AND report_status = 'pending' AND lead_category IS NOT NULL ORDER BY id ASC",
     );
     for (const row of rows) {

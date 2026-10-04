@@ -1,66 +1,76 @@
 import "dotenv/config";
-import Database from "better-sqlite3";
-import { mkdirSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { Pool, type PoolClient } from "pg";
 
 export interface SqliteDatabase {
-  all<T>(sql: string, ...parameters: unknown[]): T[];
-  get<T>(sql: string, ...parameters: unknown[]): T | undefined;
-  run(sql: string, ...parameters: unknown[]): { changes: number };
-  transaction<T>(operation: () => T): T;
-  close(): void;
+  all<T>(sql: string, ...parameters: unknown[]): Promise<T[]>;
+  get<T>(sql: string, ...parameters: unknown[]): Promise<T | undefined>;
+  run(sql: string, ...parameters: unknown[]): Promise<{ changes: number }>;
+  transaction<T>(operation: () => Promise<T> | T): Promise<T>;
+  close(): Promise<void>;
 }
 
-const databasePath = resolve(process.env.DATABASE_PATH ?? "data/doctor_com.sqlite");
-mkdirSync(dirname(databasePath), { recursive: true });
+const connectionString = process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/doctor_com";
+const pool = new Pool({
+  connectionString,
+  ...(process.env.POSTGRES_SSL === "true" ? { ssl: { rejectUnauthorized: false } } : {}),
+});
+const transactionContext = new AsyncLocalStorage<PoolClient | null>();
 
-const sqlite = new Database(databasePath);
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
-sqlite.exec(awaitSchema());
-
-const submissionColumns = sqlite.pragma("table_info(questionnaire_submissions)") as { name: string }[];
-if (!submissionColumns.some((column) => column.name === "report_html")) {
-  sqlite.exec("ALTER TABLE questionnaire_submissions ADD COLUMN report_html TEXT");
-}
-if (!submissionColumns.some((column) => column.name === "report_pdf")) {
-  sqlite.exec("ALTER TABLE questionnaire_submissions ADD COLUMN report_pdf BLOB");
-}
-
-function awaitSchema() {
-  const schemaPath = fileURLToPath(new URL("./schema.sql", import.meta.url));
-  return readFileSync(schemaPath, "utf8");
+async function ensureSchema() {
+  const client = await pool.connect();
+  try {
+    const schemaPath = fileURLToPath(new URL("./schema.sql", import.meta.url));
+    await client.query(readFileSync(schemaPath, "utf8"));
+  } finally {
+    client.release();
+  }
 }
 
-function bindParameters(parameters: unknown[]) {
-  return parameters as (string | number | bigint | Buffer | null)[];
-}
+await ensureSchema();
 
 export const database: SqliteDatabase = {
-  all<T>(sql: string, ...parameters: unknown[]) {
-    return sqlite.prepare(sql).all(...bindParameters(parameters)) as T[];
+  async all<T>(sql: string, ...parameters: unknown[]) {
+    const client = transactionContext.getStore();
+    const result = await (client ?? pool).query(sql, parameters);
+    return result.rows as T[];
   },
-  get<T>(sql: string, ...parameters: unknown[]) {
-    return sqlite.prepare(sql).get(...bindParameters(parameters)) as T | undefined;
+  async get<T>(sql: string, ...parameters: unknown[]) {
+    const client = transactionContext.getStore();
+    const result = await (client ?? pool).query(sql, parameters);
+    return result.rows[0] as T | undefined;
   },
-  run(sql: string, ...parameters: unknown[]) {
-    const result = sqlite.prepare(sql).run(...bindParameters(parameters));
-    return { changes: result.changes };
+  async run(sql: string, ...parameters: unknown[]) {
+    const client = transactionContext.getStore();
+    const result = await (client ?? pool).query(sql, parameters);
+    return { changes: result.rowCount ?? 0 };
   },
-  transaction<T>(operation: () => T) {
-    return sqlite.transaction(operation)();
+  async transaction<T>(operation: () => Promise<T> | T) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await transactionContext.run(client, operation);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   },
-  close() {
-    sqlite.close();
+  async close() {
+    await pool.end();
   },
 };
 
 export async function purgeExpiredDrafts() {
   const configuredDays = Number(process.env.DRAFT_TTL_DAYS ?? 30);
   const days = Number.isFinite(configuredDays) ? Math.min(365, Math.max(1, Math.floor(configuredDays))) : 30;
-  database.run(
-    "DELETE FROM questionnaire_submissions WHERE status = 'draft' AND datetime(updated_at) < datetime('now', ?)",
-    `-${days} days`,
+  await database.run(
+    "DELETE FROM questionnaire_submissions WHERE status = 'draft' AND updated_at < NOW() - ($1 * INTERVAL '1 day')",
+    days,
   );
 }

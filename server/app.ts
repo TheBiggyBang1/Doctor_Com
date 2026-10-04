@@ -68,7 +68,7 @@ export function createApp(
 
   app.get("/api/health", async (_request, response) => {
     try {
-      database.get("SELECT 1");
+      await database.get("SELECT 1");
       response.json({ status: "ok" });
     } catch {
       response.status(503).json({ status: "unavailable" });
@@ -82,8 +82,8 @@ export function createApp(
       return;
     }
     try {
-      const row = database.get<DraftRow>(
-        "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? LIMIT 1",
+      const row = await database.get<DraftRow>(
+        "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = $1 LIMIT 1",
         tokenHash(token),
       );
       if (!row) {
@@ -106,8 +106,8 @@ export function createApp(
     try {
       const currentToken = readResumeToken(request);
       if (currentToken) {
-        const row = database.get<DraftRow>(
-          "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? LIMIT 1",
+        const row = await database.get<DraftRow>(
+          "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = $1 LIMIT 1",
           tokenHash(currentToken),
         );
         if (row?.status === "draft") {
@@ -118,8 +118,8 @@ export function createApp(
       }
 
       const token = randomBytes(32).toString("base64url");
-      database.run(
-        "INSERT INTO questionnaire_submissions (resume_token_hash, language, current_step, answers, status) VALUES (?, ?, ?, ?, 'draft')",
+      await database.run(
+        "INSERT INTO questionnaire_submissions (resume_token_hash, language, current_step, answers, status) VALUES ($1, $2, $3, $4, 'draft')",
         tokenHash(token), parsed.data.language, parsed.data.currentStep, JSON.stringify(parsed.data.answers),
       );
       setResumeCookie(response, token);
@@ -141,8 +141,8 @@ export function createApp(
       return;
     }
     try {
-      const result = database.run(
-        "UPDATE questionnaire_submissions SET language = ?, current_step = ?, answers = ? WHERE resume_token_hash = ? AND status = 'draft'",
+      const result = await database.run(
+        "UPDATE questionnaire_submissions SET language = $1, current_step = $2, answers = $3 WHERE resume_token_hash = $4 AND status = 'draft'",
         parsed.data.language, parsed.data.currentStep, JSON.stringify(parsed.data.answers), tokenHash(token),
       );
       if (result.changes === 0) {
@@ -174,15 +174,15 @@ export function createApp(
 
     try {
       const score = calculateLeadScore(validation.data);
-      const outcome = database.transaction(() => {
-        const draft = database.get<DraftRow>(
-          "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ?",
+      const outcome = await database.transaction(async () => {
+        const draft = await database.get<DraftRow>(
+          "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = $1",
           tokenHash(token),
         );
         if (!draft) return { status: "missing" as const };
         if (draft.status === "submitted") return { status: "already_submitted" as const, reportStatus: draft.report_status };
-        database.run(
-          "UPDATE questionnaire_submissions SET language = ?, current_step = ?, answers = ?, status = 'submitted', score_total = ?, score_budget = ?, score_urgency = ?, score_company = ?, lead_category = ?, scored_at = CURRENT_TIMESTAMP, report_status = 'pending', report_markdown = NULL, report_generated_at = NULL, consent_at = CURRENT_TIMESTAMP, submitted_at = CURRENT_TIMESTAMP WHERE resume_token_hash = ? AND status = 'draft'",
+        await database.run(
+          "UPDATE questionnaire_submissions SET language = $1, current_step = $2, answers = $3, status = 'submitted', score_total = $4, score_budget = $5, score_urgency = $6, score_company = $7, lead_category = $8, scored_at = CURRENT_TIMESTAMP, report_status = 'pending', report_markdown = NULL, report_generated_at = NULL, consent_at = CURRENT_TIMESTAMP, submitted_at = CURRENT_TIMESTAMP WHERE resume_token_hash = $9 AND status = 'draft'",
           payload.data.language, payload.data.currentStep, JSON.stringify(validation.data), score.total, score.budgetScore, score.urgencyScore, score.companyScore, score.category, tokenHash(token),
         );
         return { status: "submitted" as const, id: draft.id };
@@ -209,8 +209,8 @@ export function createApp(
       return;
     }
     try {
-      const row = database.get<DraftRow>(
-        "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? AND status = 'submitted' LIMIT 1",
+      const row = await database.get<DraftRow>(
+        "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = $1 AND status = 'submitted' LIMIT 1",
         tokenHash(token),
       );
       if (!row) {
@@ -231,8 +231,8 @@ export function createApp(
       return;
     }
     try {
-      const report = database.get<DraftRow>(
-        "SELECT id, language, current_step, answers, status, report_status, report_markdown, report_html, report_pdf, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? AND status = 'submitted' LIMIT 1",
+      const report = await database.get<DraftRow>(
+        "SELECT id, language, current_step, answers, status, report_status, report_markdown, report_html, report_pdf, lead_category FROM questionnaire_submissions WHERE resume_token_hash = $1 AND status = 'submitted' LIMIT 1",
         tokenHash(token),
       );
       if (!report || report.report_status !== "ready" || (!report.report_pdf && !report.report_html && !report.report_markdown)) {
@@ -257,8 +257,8 @@ export function createApp(
       return;
     }
     try {
-      const submission = database.get<DraftRow>(
-        "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? AND status = 'submitted' LIMIT 1",
+      const submission = await database.get<DraftRow>(
+        "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = $1 AND status = 'submitted' LIMIT 1",
         tokenHash(token),
       );
       if (!submission) {
@@ -273,8 +273,8 @@ export function createApp(
         response.status(409).json({ error: "score_missing" });
         return;
       }
-      const updated = database.run(
-        "UPDATE questionnaire_submissions SET report_status = 'pending' WHERE id = ? AND report_status = 'failed'",
+      const updated = await database.run(
+        "UPDATE questionnaire_submissions SET report_status = 'pending' WHERE id = $1 AND report_status = 'failed'",
         submission.id,
       );
       if (updated.changes === 0) {
