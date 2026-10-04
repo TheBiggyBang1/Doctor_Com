@@ -895,8 +895,7 @@ export default function App() {
       <section className="questionnaire">
         <div className="questionnaire__meta">
           <span className="visually-hidden">{t.step} {step} {t.of} 6</span>
-          <span className="save-indicator" aria-live="polite">
-            <span className={saving ? "save-dot save-dot--busy" : "save-dot"} />
+          <span className="visually-hidden" role="status" aria-live="polite">
             {saveError ? t.saveFailed : saving ? t.saving : savedAt ? t.saved : t.minutes}
           </span>
         </div>
