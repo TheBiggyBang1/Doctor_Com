@@ -20,6 +20,14 @@ sqlite.pragma("journal_mode = WAL");
 sqlite.pragma("foreign_keys = ON");
 sqlite.exec(awaitSchema());
 
+const submissionColumns = sqlite.pragma("table_info(questionnaire_submissions)") as { name: string }[];
+if (!submissionColumns.some((column) => column.name === "report_html")) {
+  sqlite.exec("ALTER TABLE questionnaire_submissions ADD COLUMN report_html TEXT");
+}
+if (!submissionColumns.some((column) => column.name === "report_pdf")) {
+  sqlite.exec("ALTER TABLE questionnaire_submissions ADD COLUMN report_pdf BLOB");
+}
+
 function awaitSchema() {
   const schemaPath = fileURLToPath(new URL("./schema.sql", import.meta.url));
   return readFileSync(schemaPath, "utf8");

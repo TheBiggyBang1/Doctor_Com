@@ -12,13 +12,15 @@ test("report job claims a pending submission and persists only generated markdow
       return { changes: 1 };
     },
   } as unknown as SqliteDatabase;
-  const generatePlan = async () => "# Plan\n\nGenerated strategy.";
-  const jobs = createReportJobs(database, generatePlan as never);
+  const generatePlan = async () => "<h1>Plan</h1><p>Generated strategy.</p>";
+  const compilePdf = async () => Buffer.from("%PDF-test");
+  const jobs = createReportJobs(database, generatePlan as never, compilePdf as never);
   const succeeded = await jobs.run(7, {} as QuestionnaireAnswers, "B", "fr");
 
   assert.equal(succeeded, true);
   assert.match(statements[0], /report_status = 'processing'/);
-  assert.match(statements[1], /report_markdown = \?/);
+  assert.match(statements[1], /report_html = \?/);
+  assert.match(statements[1], /report_pdf = \?/);
   assert.match(statements[1], /report_status = 'ready'/);
   assert.equal(statements.length, 2);
 });

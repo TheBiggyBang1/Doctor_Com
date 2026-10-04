@@ -12,7 +12,7 @@
     "start:server": "node dist/server/index.js",
     "db:setup": "tsx server/setupDatabase.ts",
     "db:migrate": "node dist/server/setupDatabase.js",
-    "test": "tsx --test server/validation.test.ts server/scoring.test.ts server/plan.test.ts server/pdf.test.ts server/reportJobs.test.ts"
+    "test": "tsx --test server/validation.test.ts server/scoring.test.ts server/plan.test.ts server/pdf.test.ts server/htmlPdf.test.ts server/reportJobs.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -20,8 +20,10 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "pdfkit": "^0.20.2",
+    "playwright": "^1.63.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sanitize-html": "^2.18.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -31,6 +33,7 @@
     "@types/pdfkit": "^0.17.6",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@types/sanitize-html": "^2.16.2",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.2",
     "tsx": "^4.19.3",

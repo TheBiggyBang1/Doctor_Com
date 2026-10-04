@@ -39,9 +39,10 @@ test("plan prompt defines complete A and B deliverables", () => {
   assert.match(tierA, /two distinct priority personas, 3-4 measurable SMART objectives, 4-6 justified channels/);
   assert.match(tierA, /use the web_search tool to research 2-3 real competitors/);
   assert.match(tierA, /competitor benchmark table/);
+  assert.match(tierA, /Return only a semantic HTML fragment/);
   assert.match(tierB, /one primary persona.*3 SMART objectives, 3-4 prioritized channels/s);
   assert.doesNotMatch(tierB, /web_search/);
-  assert.match(tierA, /compact Markdown table/);
+  assert.match(tierA, /compact HTML table/);
   assert.match(tierB, /omit a section rather than leaving it empty/);
 });
 
@@ -74,7 +75,7 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
         model: "claude-sonnet-4-6",
         content: [{
           type: "text",
-          text: "# Votre stratégie\n\nUne recommandation claire.",
+          text: "<h1>Votre stratégie</h1><p>Une recommandation claire.</p>",
           citations: tierARequest ? [{
             type: "web_search_result_location",
             cited_text: "Positioning for artisan products",
@@ -112,8 +113,8 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
     const tierAMessages = receivedBody?.messages as Array<{ content: string }>;
     assert.deepEqual(tools, [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }]);
     assert.match(tierAMessages[0].content, /benchmark table/);
-    assert.match(researchedPlan, /## Sources consultées/);
-    assert.match(researchedPlan, /\[Competitor positioning\]\(https:\/\/competitor\.example\/positioning\)/);
+    assert.match(researchedPlan, /<h2>Sources consultées<\/h2>/);
+    assert.match(researchedPlan, /<a href="https:\/\/competitor\.example\/positioning">Competitor positioning<\/a>/);
   } finally {
     if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
     else process.env.ANTHROPIC_API_KEY = previousKey;

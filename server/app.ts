@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import express, { type Request, type Response } from "express";
 import type { SqliteDatabase } from "./database.js";
+import { renderHtmlReportPdf } from "./htmlPdf.js";
 import { renderPlanPdf } from "./pdf.js";
 import { createReportJobs, type PlanGenerator } from "./reportJobs.js";
 import { calculateLeadScore, type LeadCategory } from "./scoring.js";
@@ -18,6 +19,8 @@ interface DraftRow {
   status: "draft" | "submitted";
   report_status: "not_started" | "pending" | "processing" | "ready" | "failed";
   report_markdown: string | null;
+  report_html?: string | null;
+  report_pdf?: Buffer | null;
   lead_category: LeadCategory | null;
 }
 
@@ -229,14 +232,16 @@ export function createApp(
     }
     try {
       const report = database.get<DraftRow>(
-        "SELECT id, language, current_step, answers, status, report_status, report_markdown, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? AND status = 'submitted' LIMIT 1",
+        "SELECT id, language, current_step, answers, status, report_status, report_markdown, report_html, report_pdf, lead_category FROM questionnaire_submissions WHERE resume_token_hash = ? AND status = 'submitted' LIMIT 1",
         tokenHash(token),
       );
-      if (!report || report.report_status !== "ready" || !report.report_markdown) {
+      if (!report || report.report_status !== "ready" || (!report.report_pdf && !report.report_html && !report.report_markdown)) {
         response.status(report ? 409 : 404).json({ error: report ? "report_not_ready" : "report_not_found" });
         return;
       }
-      const pdf = await renderPlanPdf(report.report_markdown);
+      const pdf = report.report_pdf ?? (report.report_html
+        ? await renderHtmlReportPdf(report.report_html, report.language)
+        : await renderPlanPdf(report.report_markdown ?? ""));
       response.setHeader("Cache-Control", "private, no-store");
       response.setHeader("Content-Disposition", "inline; filename=plan-de-communication.pdf");
       response.type("application/pdf").send(pdf);

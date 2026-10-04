@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS questionnaire_submissions (
   scored_at TEXT,
   report_status TEXT NOT NULL DEFAULT 'not_started' CHECK (report_status IN ('not_started', 'pending', 'processing', 'ready', 'failed')),
   report_markdown TEXT,
+  report_html TEXT,
+  report_pdf BLOB,
   report_generated_at TEXT,
   consent_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
