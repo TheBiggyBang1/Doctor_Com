@@ -70,10 +70,10 @@ type ReportStatus = "not_started" | "pending" | "processing" | "ready" | "failed
 const messages = {
   fr: {
     eyebrow: "DIAGNOSTIC GRATUIT · 5 MINUTES",
-    title: "Votre prochaine idée mérite le bon public.",
-    body: "Quelques questions pour comprendre votre entreprise et dessiner une première direction de communication.",
+    title: "Obtenez votre plan de communication personnalisé",
+    body: "Répondez à quelques questions sur votre entreprise et vos objectifs. Notre équipe stratégique vous prépare une première feuille de route, adaptée à votre secteur et votre budget.",
     action: "Commencer le diagnostic",
-    note: "Sans engagement · 6 étapes",
+    note: "Aucune carte bancaire requise · 6 étapes · ~5 minutes",
     company: "Entreprise",
     goals: "Objectifs",
     audience: "Cibles",
