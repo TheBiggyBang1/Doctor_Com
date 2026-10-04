@@ -891,17 +891,23 @@ export default function App() {
 
   return (
     <main className="app-frame">
-      <AppHeader language={language} onLanguageChange={selectLanguage} />
+      <AppHeader backLabel={t.previous} language={language} onBack={moveBack} onLanguageChange={selectLanguage} />
       <section className="questionnaire">
         <div className="questionnaire__meta">
-          <span>{t.step} {step} {t.of} 6</span>
+          <span className="visually-hidden">{t.step} {step} {t.of} 6</span>
           <span className="save-indicator" aria-live="polite">
             <span className={saving ? "save-dot save-dot--busy" : "save-dot"} />
             {saveError ? t.saveFailed : saving ? t.saving : savedAt ? t.saved : t.minutes}
           </span>
         </div>
-        <div className="progress-track" aria-label={`${t.step} ${step} ${t.of} 6`}>
-          <span style={{ width: `${(step / 6) * 100}%` }} />
+        <div className="stepper" aria-label={`${t.step} ${step} ${t.of} 6`}>
+          {stepLabels.map((label, index) => (
+            <div aria-current={step === index + 1 ? "step" : undefined} className={`stepper__item${step === index + 1 ? " stepper__item--active" : ""}${step > index + 1 ? " stepper__item--complete" : ""}`} key={label}>
+              <span className="stepper__node" aria-hidden="true">{step > index + 1 ? "✓" : index + 1}</span>
+              <span className="stepper__label">{t[label]}</span>
+              {index < stepLabels.length - 1 && <span className="stepper__line" aria-hidden="true" />}
+            </div>
+          ))}
         </div>
         <header className="step-heading">
           <p className="eyebrow">0{step} / 06 · {t[stepLabels[step - 1]]}</p>
@@ -945,9 +951,20 @@ function LanguageSwitch({ language, onChange }: { language: Language; onChange: 
   );
 }
 
-function AppHeader({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
+function AppHeader({
+  language,
+  onLanguageChange,
+  onBack,
+  backLabel,
+}: {
+  language: Language;
+  onLanguageChange: (language: Language) => void;
+  onBack?: () => void;
+  backLabel?: string;
+}) {
   return (
     <header className="topbar app-topbar">
+      {onBack && <button aria-label={backLabel} className="app-topbar__back" onClick={onBack} type="button">←</button>}
       <a className="wordmark" href="#top" aria-label="Doctor Com, accueil">
         <span className="wordmark__name">DOCTOR COM</span>
         <span className="wordmark__agency">par 5 Sens Advertising</span>
