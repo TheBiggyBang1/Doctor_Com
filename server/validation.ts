@@ -71,7 +71,7 @@ export const clientCoordinatesSchema = z.object({
   accuracy: z.number().finite().optional(),
   source: z.enum(["browser-geolocation"]).optional(),
   timestamp: z.number().int().optional(),
-}).strict().optional();
+}).strict().nullable().optional();
 
 export const draftPayloadSchema = z.object({
   language: z.enum(["fr", "en"]),

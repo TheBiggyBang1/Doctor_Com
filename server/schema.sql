@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS questionnaire_submissions (
   language TEXT NOT NULL DEFAULT 'fr' CHECK (language IN ('fr', 'en')),
   current_step INTEGER NOT NULL DEFAULT 1,
   answers JSONB NOT NULL,
+  client_coordinates JSONB,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted')),
   score_total INTEGER,
   score_budget INTEGER,
@@ -21,6 +22,9 @@ CREATE TABLE IF NOT EXISTS questionnaire_submissions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   submitted_at TIMESTAMPTZ
 );
+
+ALTER TABLE questionnaire_submissions
+  ADD COLUMN IF NOT EXISTS client_coordinates JSONB;
 
 CREATE INDEX IF NOT EXISTS idx_questionnaire_status_updated ON questionnaire_submissions (status, updated_at);
 CREATE INDEX IF NOT EXISTS idx_questionnaire_report_status ON questionnaire_submissions (report_status, id);

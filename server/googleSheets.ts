@@ -124,7 +124,7 @@ export async function appendSubmissionToGoogleSheet(input: GoogleSubmissionInput
     });
     const sheets = google.sheets({ version: "v4", auth });
     const row = buildGoogleSheetRow(input);
-    const range = process.env.GOOGLE_SHEET_RANGE ?? "Sheet1!A:Z";
+    const range = process.env.GOOGLE_SHEET_RANGE ?? "Sheet1!A:AI";
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
       range,

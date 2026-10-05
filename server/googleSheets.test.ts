@@ -18,6 +18,7 @@ test("buildGoogleSheetRow includes full form data plus client coordinates", () =
   });
 
   assert.equal(row[0], "fr");
+  assert.equal(row.length, 35);
   assert.equal(row[1], "Acme");
   assert.equal(row[4], "Tunis");
   assert.equal(row[25], "+21622123456");

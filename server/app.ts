@@ -183,8 +183,8 @@ export function createApp(
         if (!draft) return { status: "missing" as const };
         if (draft.status === "submitted") return { status: "already_submitted" as const, reportStatus: draft.report_status };
         await database.run(
-          "UPDATE questionnaire_submissions SET language = $1, current_step = $2, answers = $3, status = 'submitted', score_total = $4, score_budget = $5, score_urgency = $6, score_company = $7, lead_category = $8, scored_at = CURRENT_TIMESTAMP, report_status = 'pending', report_markdown = NULL, report_generated_at = NULL, consent_at = CURRENT_TIMESTAMP, submitted_at = CURRENT_TIMESTAMP WHERE resume_token_hash = $9 AND status = 'draft'",
-          payload.data.language, payload.data.currentStep, JSON.stringify(validation.data), score.total, score.budgetScore, score.urgencyScore, score.companyScore, score.category, tokenHash(token),
+          "UPDATE questionnaire_submissions SET language = $1, current_step = $2, answers = $3, client_coordinates = $4, status = 'submitted', score_total = $5, score_budget = $6, score_urgency = $7, score_company = $8, lead_category = $9, scored_at = CURRENT_TIMESTAMP, report_status = 'pending', report_markdown = NULL, report_generated_at = NULL, consent_at = CURRENT_TIMESTAMP, submitted_at = CURRENT_TIMESTAMP WHERE resume_token_hash = $10 AND status = 'draft'",
+          payload.data.language, payload.data.currentStep, JSON.stringify(validation.data), JSON.stringify(payload.data.coordinates ?? null), score.total, score.budgetScore, score.urgencyScore, score.companyScore, score.category, tokenHash(token),
         );
         return { status: "submitted" as const, id: draft.id };
       });
@@ -202,7 +202,11 @@ export function createApp(
         answers: validation.data,
         coordinates: payload.data.coordinates ?? null,
         score: { total: score.total, category: score.category },
-      }).catch(() => undefined);
+      }).then((appended) => {
+        if (!appended) console.error("Google Sheets export was not completed; check Google Sheets environment variables and service-account access.");
+      }).catch((error) => {
+        console.error("Google Sheets export failed", error);
+      });
       void reportJobs.run(outcome.id, validation.data, score.category, payload.data.language);
     } catch {
       response.status(503).json({ error: "storage_unavailable" });
