@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import express, { type Request, type Response } from "express";
 import type { SqliteDatabase } from "./database.js";
+import { appendSubmissionToGoogleSheet } from "./googleSheets.js";
 import { renderHtmlReportPdf } from "./htmlPdf.js";
 import { renderPlanPdf } from "./pdf.js";
 import { createReportJobs, type PlanGenerator } from "./reportJobs.js";
@@ -196,6 +197,12 @@ export function createApp(
         return;
       }
       response.status(202).json({ status: "submitted", reportStatus: "pending" });
+      void appendSubmissionToGoogleSheet({
+        language: payload.data.language,
+        answers: validation.data,
+        coordinates: payload.data.coordinates ?? null,
+        score: { total: score.total, category: score.category },
+      }).catch(() => undefined);
       void reportJobs.run(outcome.id, validation.data, score.category, payload.data.language);
     } catch {
       response.status(503).json({ error: "storage_unavailable" });

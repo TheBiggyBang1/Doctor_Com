@@ -12,12 +12,13 @@
     "start:server": "node dist/server/index.js",
     "db:setup": "tsx server/setupDatabase.ts",
     "db:migrate": "node dist/server/setupDatabase.js",
-    "test": "tsx --test server/validation.test.ts server/scoring.test.ts server/plan.test.ts server/pdf.test.ts server/htmlPdf.test.ts server/reportJobs.test.ts"
+    "test": "tsx --test server/validation.test.ts server/scoring.test.ts server/plan.test.ts server/pdf.test.ts server/htmlPdf.test.ts server/reportJobs.test.ts server/googleSheets.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "googleapis": "^183.0.0",
     "pdfkit": "^0.20.2",
     "pg": "^8.23.1",
     "playwright": "^1.63.0",
