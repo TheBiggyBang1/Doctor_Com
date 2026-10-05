@@ -4,13 +4,6 @@ import type { QuestionnaireAnswers } from "./validation.js";
 export type GoogleSubmissionInput = {
   language: "fr" | "en";
   answers: QuestionnaireAnswers;
-  coordinates: {
-    latitude: number;
-    longitude: number;
-    accuracy?: number;
-    source?: "browser-geolocation";
-    timestamp?: number;
-  } | null;
   score: { total: number; category: "A" | "B" | "C" };
 };
 
@@ -57,11 +50,6 @@ export function buildGoogleSheetRow(input: GoogleSubmissionInput) {
     contact_email: contact.email ?? "",
     contact_phone: contact.phone ?? "",
     consent: contact.consent ? "yes" : "no",
-    latitude: input.coordinates?.latitude ?? "",
-    longitude: input.coordinates?.longitude ?? "",
-    accuracy: input.coordinates?.accuracy ?? "",
-    coordinate_source: input.coordinates?.source ?? "",
-    coordinate_timestamp: input.coordinates?.timestamp ?? "",
     score_total: input.score.total,
     score_category: input.score.category,
     raw_payload: JSON.stringify(input.answers),
@@ -95,11 +83,6 @@ export function buildGoogleSheetRow(input: GoogleSubmissionInput) {
     payload.contact_email,
     payload.contact_phone,
     payload.consent,
-    payload.latitude,
-    payload.longitude,
-    payload.accuracy,
-    payload.coordinate_source,
-    payload.coordinate_timestamp,
     payload.score_total,
     payload.score_category,
     payload.raw_payload,
@@ -124,7 +107,7 @@ export async function appendSubmissionToGoogleSheet(input: GoogleSubmissionInput
     });
     const sheets = google.sheets({ version: "v4", auth });
     const row = buildGoogleSheetRow(input);
-    const range = process.env.GOOGLE_SHEET_RANGE ?? "Sheet1!A:AI";
+    const range = process.env.GOOGLE_SHEET_RANGE ?? "A:AI";
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
       range,

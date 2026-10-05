@@ -600,28 +600,11 @@ export default function App() {
       return;
     }
     try {
-      const coordinates = await new Promise<{ latitude: number; longitude: number; accuracy?: number; source: "browser-geolocation"; timestamp?: number } | null>((resolve) => {
-        if (!("geolocation" in navigator)) {
-          resolve(null);
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(
-          (position) => resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            source: "browser-geolocation",
-            timestamp: position.timestamp,
-          }),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-        );
-      });
       const response = await fetch("/api/questionnaire/draft/submit", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, language, currentStep: step, coordinates }),
+        body: JSON.stringify({ answers, language, currentStep: step }),
       });
       if (!response.ok) {
         const result = await response.json().catch(() => null);

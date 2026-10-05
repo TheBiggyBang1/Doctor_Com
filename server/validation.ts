@@ -65,19 +65,10 @@ export const answersSchema = z.object({
 
 export type QuestionnaireAnswers = z.infer<typeof answersSchema>;
 
-export const clientCoordinatesSchema = z.object({
-  latitude: z.number().finite(),
-  longitude: z.number().finite(),
-  accuracy: z.number().finite().optional(),
-  source: z.enum(["browser-geolocation"]).optional(),
-  timestamp: z.number().int().optional(),
-}).strict().nullable().optional();
-
 export const draftPayloadSchema = z.object({
   language: z.enum(["fr", "en"]),
   currentStep: z.number().int().min(1).max(6),
   answers: answersSchema,
-  coordinates: clientCoordinatesSchema,
 }).strict();
 
 const countryCurrency: Record<string, string> = {

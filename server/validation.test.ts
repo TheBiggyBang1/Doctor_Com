@@ -67,12 +67,11 @@ test("accepts a complete questionnaire and a public email provider", () => {
   assert.equal(result.success, true);
 });
 
-test("accepts a final submission when browser geolocation is unavailable", () => {
+test("accepts a final submission without collecting browser geolocation", () => {
   const result = draftPayloadSchema.safeParse({
     language: "fr",
     currentStep: 6,
     answers: completeAnswers,
-    coordinates: null,
   });
   assert.equal(result.success, true);
 });
