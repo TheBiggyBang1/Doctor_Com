@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+const companyLogo = new URL("../logo_5sens.png", import.meta.url).href;
 import {
   budgetFrequencies,
   clientTypes,
@@ -834,8 +835,8 @@ export default function App() {
       <main className="landing">
         <header className="topbar">
           <a className="wordmark" href="#top" aria-label="Doctor Com, accueil">
+            <img alt="5 Sens Advertising" className="wordmark__logo" src={companyLogo} />
             <span className="wordmark__name">DOCTOR COM</span>
-            <span className="wordmark__agency">par 5 Sens Advertising</span>
           </a>
           <LanguageSwitch language={language} onChange={selectLanguage} />
         </header>
@@ -965,8 +966,8 @@ function AppHeader({
     <header className="topbar app-topbar">
       {onBack && <button aria-label={backLabel} className="app-topbar__back" onClick={onBack} type="button">←</button>}
       <a className="wordmark" href="#top" aria-label="Doctor Com, accueil">
+        <img alt="5 Sens Advertising" className="wordmark__logo" src={companyLogo} />
         <span className="wordmark__name">DOCTOR COM</span>
-        <span className="wordmark__agency">par 5 Sens Advertising</span>
       </a>
       <LanguageSwitch language={language} onChange={onLanguageChange} />
     </header>

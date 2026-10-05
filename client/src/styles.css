@@ -40,8 +40,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   border-bottom: 1px solid var(--line);
 }
 .app-topbar__back { display: none; }
-.wordmark { display: flex; align-items: baseline; gap: 8px; color: var(--ink); text-decoration: none; }
-.wordmark__name { font-size: 15px; font-weight: 750; letter-spacing: 0.1em; }
+.wordmark { display: flex; align-items: center; gap: 12px; color: var(--ink); text-decoration: none; }
+.wordmark__logo { display: block; width: clamp(88px, 12vw, 132px); height: auto; max-height: 48px; object-fit: contain; }
+.wordmark__name { font-size: 15px; font-weight: 750; }
 .wordmark__agency { color: var(--muted); font-size: 11px; }
 .language-switch {
   display: flex;
@@ -261,11 +262,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .app-topbar { min-height: 68px; }
   .app-topbar { display: grid; grid-template-columns: 1fr auto 1fr; }
   .app-topbar__back { display: inline-flex; justify-self: start; align-items: center; padding: 8px 0; border: 0; background: transparent; color: #666; font-size: 18px; }
-  .app-topbar .wordmark { flex-direction: column; justify-self: center; align-items: center; gap: 0; white-space: nowrap; }
+  .app-topbar .wordmark { flex-direction: column; justify-self: center; align-items: center; gap: 1px; white-space: nowrap; }
   .app-topbar .language-switch { justify-self: end; }
   .wordmark { gap: 6px; }
-  .wordmark__name { font-size: 12px; }
-  .wordmark__agency { font-size: 9px; }
+  .wordmark__logo { width: 86px; max-height: 38px; }
+  .wordmark__name { font-size: 10px; }
   .language-switch { gap: 4px; }
   .language-switch button { min-width: 24px; font-size: 10px; }
   .questionnaire { margin-top: 12px; }
@@ -308,8 +309,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media (max-width: 420px) {
-  .wordmark__name { font-size: 11px; }
-  .wordmark__agency { font-size: 8px; }
+  .wordmark__logo { width: 76px; max-height: 34px; }
+  .wordmark__name { font-size: 9px; }
   .hero h1 { font-size: 36px; }
   .app-frame { padding-right: 16px; padding-left: 16px; }
   .choice-grid, .choice-grid--3, .choice-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

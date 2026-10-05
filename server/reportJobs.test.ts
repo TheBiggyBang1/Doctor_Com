@@ -1,40 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { SqliteDatabase } from "./database.js";
 import { createReportJobs } from "./reportJobs.js";
 import type { QuestionnaireAnswers } from "./validation.js";
 
-test("report job claims a pending submission and persists only generated markdown", async () => {
-  const statements: string[] = [];
-  const database = {
-    run: (sql: string) => {
-      statements.push(sql);
-      return { changes: 1 };
-    },
-  } as unknown as SqliteDatabase;
+test("report job keeps its status and PDF in memory", async () => {
   const generatePlan = async () => "<h1>Plan</h1><p>Generated strategy.</p>";
   const compilePdf = async () => Buffer.from("%PDF-test");
-  const jobs = createReportJobs(database, generatePlan as never, compilePdf as never);
+  const jobs = createReportJobs(generatePlan as never, compilePdf as never);
   const succeeded = await jobs.run(7, {} as QuestionnaireAnswers, "B", "fr");
 
   assert.equal(succeeded, true);
-  assert.match(statements[0], /report_status = 'processing'/);
-  assert.match(statements[1], /report_html = \$1/);
-  assert.match(statements[1], /report_pdf = \$2/);
-  assert.match(statements[1], /report_status = 'ready'/);
-  assert.equal(statements.length, 2);
+  assert.deepEqual(jobs.get(7), { status: "ready", pdf: Buffer.from("%PDF-test") });
 });
 
 test("report job marks a failed generation without leaking provider details", async () => {
-  const statements: string[] = [];
   const errors: string[] = [];
-  const database = {
-    run: (sql: string) => {
-      statements.push(sql);
-      return { changes: 1 };
-    },
-  } as unknown as SqliteDatabase;
-  const jobs = createReportJobs(database, async () => { throw new Error("provider-secret-detail sk-ant-test-secret"); });
+  const jobs = createReportJobs(async () => { throw new Error("provider-secret-detail sk-ant-test-secret"); });
   const originalConsoleError = console.error;
   console.error = (message: string) => errors.push(message);
   let succeeded: boolean;
@@ -45,8 +26,7 @@ test("report job marks a failed generation without leaking provider details", as
   }
 
   assert.equal(succeeded, false);
-  assert.match(statements[1], /report_status = 'failed'/);
-  assert.ok(!statements.some((statement) => statement.includes("provider-secret-detail")));
+  assert.deepEqual(jobs.get(8), { status: "failed" });
   assert.match(errors[0], /provider-secret-detail/);
   assert.ok(!errors[0].includes("sk-ant-test-secret"));
 });

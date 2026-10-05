@@ -25,10 +25,10 @@ test("plan prompt excludes contact information and the declared budget", () => {
 test("plan prompt selects the requested language and lead detail tier", () => {
   const prompt = buildCommunicationPrompt(privateData, "C", "en");
   assert.match(prompt, /in English/);
-  assert.match(prompt, /2-3 designed pages/);
+  assert.match(prompt, /Target 1-2 designed A4 pages/);
   assert.match(prompt, /formal second person/);
-  assert.match(prompt, /two highest-value channels/);
-  assert.match(prompt, /30-day validation roadmap/);
+  assert.match(prompt, /Recommend 1-2 priority channels/);
+  assert.match(prompt, /Do not add a rollout section/);
   assert.match(prompt, /never mention the letter, score, or qualification process/);
 });
 
@@ -36,14 +36,17 @@ test("plan prompt defines complete A and B deliverables", () => {
   const tierA = buildCommunicationPrompt(privateData, "A", "fr");
   const tierB = buildCommunicationPrompt(privateData, "B", "fr");
 
-  assert.match(tierA, /two distinct priority personas, 3-4 measurable SMART objectives, 4-6 justified channels/);
-  assert.match(tierA, /use the web_search tool to research 2-3 real competitors/);
-  assert.match(tierA, /competitor benchmark table/);
+  assert.match(tierA, /Target 6-8 designed A4 pages/);
+  assert.match(tierA, /Develop 2-3 personas/);
+  assert.match(tierA, /Recommend 5-7 coherent online and offline channels/);
+  assert.match(tierA, /relevant sector trends and general competitive context/);
   assert.match(tierA, /Return only a semantic HTML fragment/);
-  assert.match(tierB, /one primary persona.*3 SMART objectives, 3-4 prioritized channels/s);
+  assert.match(tierB, /Target 3-4 designed A4 pages/);
+  assert.match(tierB, /Develop 1-2 personas/);
+  assert.match(tierB, /Recommend 3-4 priority channels/);
   assert.doesNotMatch(tierB, /web_search/);
-  assert.match(tierA, /compact HTML table/);
-  assert.match(tierB, /omit a section rather than leaving it empty/);
+  assert.match(tierA, /7\. Prochaines étapes/);
+  assert.match(tierB, /End only by inviting the client to continue the discussion/);
 });
 
 test("questionnaire text cannot escape the untrusted-data prompt boundary", () => {
@@ -64,7 +67,7 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
     request.on("end", () => {
       receivedBody = JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
       const message = receivedBody.messages as Array<{ content: string }>;
-      const tierARequest = message[0].content.includes("Internal qualification tier: A");
+      const tierARequest = message[0].content.includes("Internal qualification tier A.");
       const apiKeyHeader = request.headers["x-api-key"];
       receivedApiKey = Array.isArray(apiKeyHeader) ? apiKeyHeader[0] ?? "" : apiKeyHeader ?? "";
       response.writeHead(200, { "content-type": "application/json" });
@@ -104,7 +107,7 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
     assert.equal(receivedApiKey, "local-test-key");
     assert.equal(receivedBody?.model, "claude-sonnet-4-6");
     const messages = receivedBody?.messages as Array<{ content: string }>;
-    assert.match(messages[0].content, /Internal qualification tier: B/);
+    assert.match(messages[0].content, /Internal qualification tier B\./);
     assert.ok(!messages[0].content.includes("amira.private@example.com"));
     assert.equal(receivedBody?.tools, undefined);
 
@@ -112,7 +115,7 @@ test("Anthropic SDK sends the tiered prompt and returns plan text", async () => 
     const tools = receivedBody?.tools as Array<{ type: string; name: string; max_uses: number }>;
     const tierAMessages = receivedBody?.messages as Array<{ content: string }>;
     assert.deepEqual(tools, [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }]);
-    assert.match(tierAMessages[0].content, /benchmark table/);
+    assert.match(tierAMessages[0].content, /general competitive context/);
     assert.match(researchedPlan, /<h2>Sources consultées<\/h2>/);
     assert.match(researchedPlan, /<a href="https:\/\/competitor\.example\/positioning">Competitor positioning<\/a>/);
   } finally {

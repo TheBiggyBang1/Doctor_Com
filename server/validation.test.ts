@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
-import type { SqliteDatabase } from "./database.js";
 import { createApp } from "./app.js";
 import { draftPayloadSchema, validateSubmission } from "./validation.js";
 
@@ -49,8 +48,8 @@ const completeAnswers = {
   },
 };
 
-async function withApi<T>(run: (baseUrl: string) => Promise<T>, database: SqliteDatabase = {} as SqliteDatabase) {
-  const server = createApp(database).listen(0);
+async function withApi<T>(run: (baseUrl: string) => Promise<T>, options: Parameters<typeof createApp>[0] = {}) {
+  const server = createApp(options).listen(0);
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const address = server.address() as AddressInfo;
   try {
@@ -156,27 +155,48 @@ test("submit endpoint rejects missing consent before accessing storage", async (
   });
 });
 
-test("health endpoint verifies database connectivity", async () => {
-  let queried = false;
-  const database = {
-    get: () => {
-      queried = true;
-      return [[], []];
-    },
-  } as unknown as Pool;
+test("submission appends its answers to Google Sheets before acceptance", async () => {
+  let appendedAnswers: unknown;
   await withApi(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/health`);
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { status: "ok" });
-  }, database);
-  assert.equal(queried, true);
+    const draft = await fetch(`${baseUrl}/api/questionnaire/draft`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 6, answers: completeAnswers }),
+    });
+    const cookie = draft.headers.get("set-cookie")?.split(";")[0];
+    assert.ok(cookie);
+    const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+      method: "POST",
+      headers: { cookie: cookie!, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 6, answers: completeAnswers }),
+    });
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { status: "submitted", reportStatus: "pending" });
+  }, {
+    appendSubmission: async ({ answers }) => {
+      appendedAnswers = answers;
+      return true;
+    },
+    generatePlan: async () => "<h1>Plan</h1>",
+  });
+  assert.deepEqual(appendedAnswers, completeAnswers);
 });
 
-test("health endpoint returns unavailable when SQLite cannot be reached", async () => {
-  const database = { get: () => { throw new Error("database offline"); } } as unknown as SqliteDatabase;
+test("submission is not accepted when Google Sheets append fails", async () => {
   await withApi(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/health`);
+    const draft = await fetch(`${baseUrl}/api/questionnaire/draft`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 6, answers: completeAnswers }),
+    });
+    const cookie = draft.headers.get("set-cookie")?.split(";")[0];
+    assert.ok(cookie);
+    const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+      method: "POST",
+      headers: { cookie: cookie!, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 6, answers: completeAnswers }),
+    });
     assert.equal(response.status, 503);
-    assert.deepEqual(await response.json(), { status: "unavailable" });
-  }, database);
+    assert.deepEqual(await response.json(), { error: "spreadsheet_unavailable" });
+  }, { appendSubmission: async () => false });
 });
