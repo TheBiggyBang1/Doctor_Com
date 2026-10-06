@@ -128,6 +128,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .app-frame { min-height: 100vh; padding: 0 clamp(24px, 5vw, 64px) 56px; }
 .app-topbar { max-width: 1152px; margin: 0 auto; }
 .questionnaire { width: min(100%, 1152px); margin: 22px auto 0; }
+.mobile-step-eyebrow { display: none; }
 .questionnaire__meta {
   display: flex;
   justify-content: flex-end;
@@ -275,6 +276,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .language-switch button { min-width: 24px; font-size: 10px; }
   .questionnaire { margin-top: 12px; }
   .questionnaire__meta { min-height: 18px; font-size: 10px; }
+  .mobile-step-eyebrow { display: block; margin: 4px 0 0; text-align: right; font-size: 10px; letter-spacing: 0; }
   .save-indicator { gap: 5px; }
   .save-dot { width: 6px; height: 6px; }
   .stepper { justify-content: center; gap: 6px; margin-top: 12px; }
@@ -285,7 +287,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .stepper__item--complete .stepper__node { background: #d1b47f; }
   .stepper__label, .stepper__line { display: none; }
   .step-heading { position: relative; margin: 18px 0; }
-  .step-heading .eyebrow { position: absolute; top: 3px; right: 0; margin: 0; font-size: 10px; letter-spacing: 0; }
+  .step-heading .desktop-step-eyebrow { display: none; }
   .step-heading h1, .success-view h1 { max-width: calc(100% - 44px); font-size: 21px; line-height: 1.2; }
   .step-heading > p:last-child { margin-top: 4px; font-size: 13px; }
   .form-grid { grid-template-columns: 1fr; gap: 22px; }

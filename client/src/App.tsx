@@ -1007,7 +1007,7 @@ export default function App() {
     return (
       <main className="landing">
         <header className="topbar">
-          <a className="wordmark" href="#top" aria-label="Doctor Com, accueil">
+          <a className="wordmark" href="https://5sens.tn/" aria-label="5 Sens Advertising">
             <img alt="5 Sens Advertising" className="wordmark__logo" src={companyLogo} />
             <span className="wordmark__name">DOCTOR COM</span>
           </a>
@@ -1073,6 +1073,7 @@ export default function App() {
             {saveError ? t.saveFailed : saving ? t.saving : savedAt ? t.saved : t.minutes}
           </span>
         </div>
+        <p className="eyebrow mobile-step-eyebrow">0{step} / 07 · {t[stepLabels[step - 1]]}</p>
         <div className="stepper" aria-label={`${t.step} ${step} ${t.of} 7`}>
           {stepLabels.map((label, index) => (
             <div aria-current={step === index + 1 ? "step" : undefined} className={`stepper__item${step === index + 1 ? " stepper__item--active" : ""}${step > index + 1 ? " stepper__item--complete" : ""}`} key={label}>
@@ -1083,7 +1084,7 @@ export default function App() {
           ))}
         </div>
         <header className="step-heading">
-          <p className="eyebrow">0{step} / 07 · {t[stepLabels[step - 1]]}</p>
+          <p className="eyebrow desktop-step-eyebrow">0{step} / 07 · {t[stepLabels[step - 1]]}</p>
           <h1>{headings[step - 1]}</h1>
           <p>{descriptions[step - 1]}</p>
         </header>
@@ -1138,7 +1139,7 @@ function AppHeader({
   return (
     <header className="topbar app-topbar">
       {onBack && <button aria-label={backLabel} className="app-topbar__back" onClick={onBack} type="button">←</button>}
-      <a className="wordmark" href="#top" aria-label="Doctor Com, accueil">
+      <a className="wordmark" href="https://5sens.tn/" aria-label="5 Sens Advertising">
         <img alt="5 Sens Advertising" className="wordmark__logo" src={companyLogo} />
         <span className="wordmark__name">DOCTOR COM</span>
       </a>
