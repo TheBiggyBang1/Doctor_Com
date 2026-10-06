@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { normalizeEmail } from "./emailVerification.js";
 import type { QuestionnaireAnswers } from "./validation.js";
 
 export type GoogleSubmissionInput = {
@@ -119,4 +120,25 @@ export async function appendSubmissionToGoogleSheet(input: GoogleSubmissionInput
     console.error("Google Sheets export failed", error);
     return false;
   }
+}
+
+export async function hasNormalizedEmailInGoogleSheet(email: string) {
+  const sheetId = process.env.GOOGLE_SHEET_ID;
+  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+  if (!sheetId || !serviceAccountEmail || !privateKey) throw new Error("Google Sheets is not configured");
+
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: serviceAccountEmail,
+      private_key: privateKey.replace(/\\n/g, "\n"),
+    },
+    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+  });
+  const sheets = google.sheets({ version: "v4", auth });
+  const result = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: "Y:Y",
+  });
+  return (result.data.values ?? []).some(([storedEmail]) => normalizeEmail(storedEmail) === email);
 }

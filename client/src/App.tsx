@@ -74,13 +74,14 @@ const messages = {
     title: "Obtenez votre plan de communication personnalisé",
     body: "Répondez à quelques questions sur votre entreprise et vos objectifs. Notre équipe stratégique vous prépare une première feuille de route, adaptée à votre secteur et votre budget.",
     action: "Commencer le diagnostic",
-    note: "Aucune carte bancaire requise · 6 étapes · ~5 minutes",
+    note: "Aucune carte bancaire requise · 7 étapes · ~5 minutes",
     company: "Entreprise",
     goals: "Objectifs",
     audience: "Cibles",
     situation: "Situation actuelle",
     budget: "Budget et délais",
     contact: "Coordonnées",
+    verifyEmail: "Vérification email",
     step: "Étape",
     of: "sur",
     minutes: "5 min",
@@ -103,6 +104,8 @@ const messages = {
     budgetBody: "Ces éléments sont confidentiels et servent à adapter le diagnostic.",
     contactTitle: "Dernière étape",
     contactBody: "Vos coordonnées permettront à notre équipe de donner suite à votre demande.",
+    verifyEmailTitle: "Vérifiez votre adresse email",
+    verifyEmailBody: "Saisissez le code à 6 chiffres envoyé à votre adresse. Il expire dans 10 minutes.",
     name: "Nom de l'entreprise",
     sector: "Secteur d'activité",
     otherSector: "Précisez votre secteur",
@@ -142,6 +145,24 @@ const messages = {
     close: "Fermer",
     required: "Ce champ est obligatoire.",
     emailInvalid: "Saisissez une adresse email valide.",
+    emailDisposable: "Utilisez une adresse email non temporaire.",
+    emailAlreadyUsed: "Cette adresse email a déjà été utilisée pour une demande.",
+    emailSendFailed: "Le code n'a pas pu être envoyé. Réessayez dans un instant.",
+    codeInvalid: "Le code est incorrect. Vérifiez-le et réessayez.",
+    codeExpired: "Ce code a expiré. Demandez-en un nouveau.",
+    tooManyAttempts: "Trop de tentatives. Réessayez plus tard.",
+    spreadsheetUnavailable: "La vérification est temporairement indisponible. Réessayez plus tard.",
+    verificationRequired: "Vérifiez votre adresse email avant d'envoyer votre demande.",
+    dailyReportCap: "Le service a atteint sa capacité quotidienne. Réessayez demain.",
+    codeLabel: "Code de vérification",
+    codeSent: "Un code a été envoyé. Vérifiez aussi vos courriers indésirables.",
+    emailVerified: "Adresse email vérifiée.",
+    resendCode: "Renvoyer le code",
+    resendCountdown: "Renvoyer dans",
+    resendWait: "Veuillez attendre avant de demander un autre code.",
+    sendCode: "Envoyer le code",
+    verifyAndSubmit: "Vérifier et envoyer ma demande",
+    submitVerified: "Envoyer ma demande",
     phoneInvalid: "Saisissez un numéro de téléphone valide.",
     websiteInvalid: "Saisissez une adresse web valide.",
     choose: "Sélectionnez une réponse.",
@@ -169,13 +190,14 @@ const messages = {
     title: "Your next idea deserves the right audience.",
     body: "A few questions to understand your business and shape an initial direction for your communications.",
     action: "Start your diagnostic",
-    note: "No commitment · 6 steps",
+    note: "No commitment · 7 steps",
     company: "Company",
     goals: "Objectives",
     audience: "Audience",
     situation: "Current situation",
     budget: "Budget & timing",
     contact: "Contact details",
+    verifyEmail: "Email verification",
     step: "Step",
     of: "of",
     minutes: "5 min",
@@ -198,6 +220,8 @@ const messages = {
     budgetBody: "This information is confidential and helps us tailor the diagnostic.",
     contactTitle: "One last step",
     contactBody: "Your contact details let our team follow up on your request.",
+    verifyEmailTitle: "Verify your email address",
+    verifyEmailBody: "Enter the 6-digit code sent to your address. It expires in 10 minutes.",
     name: "Company name",
     sector: "Industry",
     otherSector: "Please specify your industry",
@@ -237,6 +261,24 @@ const messages = {
     close: "Close",
     required: "This field is required.",
     emailInvalid: "Enter a valid email address.",
+    emailDisposable: "Please use a non-disposable email address.",
+    emailAlreadyUsed: "This email address has already been used for a request.",
+    emailSendFailed: "We couldn't send the code. Please try again shortly.",
+    codeInvalid: "That code is incorrect. Check it and try again.",
+    codeExpired: "That code has expired. Request a new one.",
+    tooManyAttempts: "Too many attempts. Please try again later.",
+    spreadsheetUnavailable: "Verification is temporarily unavailable. Please try again later.",
+    verificationRequired: "Verify your email address before submitting your request.",
+    dailyReportCap: "Today's report capacity has been reached. Please try again tomorrow.",
+    codeLabel: "Verification code",
+    codeSent: "A code was sent. Check your spam folder too.",
+    emailVerified: "Email address verified.",
+    resendCode: "Resend code",
+    resendCountdown: "Resend in",
+    resendWait: "Please wait before requesting another code.",
+    sendCode: "Send code",
+    verifyAndSubmit: "Verify and submit my request",
+    submitVerified: "Submit my request",
     phoneInvalid: "Enter a valid phone number.",
     websiteInvalid: "Enter a valid website address.",
     choose: "Please select an option.",
@@ -263,9 +305,24 @@ const messages = {
 
 type MessageKey = keyof typeof messages.fr;
 
-const stepLabels: MessageKey[] = ["company", "goals", "audience", "situation", "budget", "contact"];
-const stepHeadings: MessageKey[] = ["startTitle", "goalsTitle", "audienceTitle", "situationTitle", "budgetTitle", "contactTitle"];
-const stepDescriptions: MessageKey[] = ["startBody", "goalsBody", "audienceBody", "situationBody", "budgetBody", "contactBody"];
+const stepLabels: MessageKey[] = ["company", "goals", "audience", "situation", "budget", "contact", "verifyEmail"];
+const stepHeadings: MessageKey[] = ["startTitle", "goalsTitle", "audienceTitle", "situationTitle", "budgetTitle", "contactTitle", "verifyEmailTitle"];
+const stepDescriptions: MessageKey[] = ["startBody", "goalsBody", "audienceBody", "situationBody", "budgetBody", "contactBody", "verifyEmailBody"];
+const emailErrorKeys: Record<string, MessageKey> = {
+  invalid_email: "emailInvalid",
+  disposable_email: "emailDisposable",
+  email_already_used: "emailAlreadyUsed",
+  email_send_failed: "emailSendFailed",
+  verification_unavailable: "emailSendFailed",
+  invalid_code: "codeInvalid",
+  expired_code: "codeExpired",
+  too_many_attempts: "tooManyAttempts",
+  rate_limited: "tooManyAttempts",
+  resend_wait: "resendWait",
+  spreadsheet_unavailable: "spreadsheetUnavailable",
+  email_verification_required: "verificationRequired",
+  daily_report_cap: "dailyReportCap",
+};
 
 function emptyAnswers(): QuestionnaireAnswers {
   return {
@@ -375,10 +432,19 @@ export default function App() {
   const [saveError, setSaveError] = useState("");
   const [pageError, setPageError] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [verificationCode, setVerificationCode] = useState("");
+  const [resendSeconds, setResendSeconds] = useState(0);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingSubmission, setVerifyingSubmission] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const saveRevision = useRef(0);
   const t = messages[language];
+
+  function emailErrorMessage(code: string) {
+    return t[emailErrorKeys[code] ?? "emailSendFailed"];
+  }
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -391,12 +457,13 @@ export default function App() {
         if (!response.ok) throw new Error("draft-load");
         return response.json();
       })
-      .then((result: { draft: null | { answers: Partial<{ [K in keyof QuestionnaireAnswers]: Partial<QuestionnaireAnswers[K]> }>; language: Language; currentStep: number; status: string; reportStatus?: ReportStatus } }) => {
+      .then((result: { draft: null | { answers: Partial<{ [K in keyof QuestionnaireAnswers]: Partial<QuestionnaireAnswers[K]> }>; language: Language; currentStep: number; status: string; reportStatus?: ReportStatus; emailVerified?: boolean } }) => {
         if (cancelled || !result.draft) return;
         setAnswers(restoreAnswers(result.draft.answers));
         setLanguage(result.draft.language === "en" ? "en" : "fr");
-        setStep(Math.min(6, Math.max(1, result.draft.currentStep)));
+        setStep(Math.min(7, Math.max(1, result.draft.currentStep)));
         setHasDraft(result.draft.status === "draft");
+        setEmailVerified(result.draft.emailVerified === true);
         setReportStatus(result.draft.reportStatus ?? "pending");
         setScreen(result.draft.status === "submitted" ? "report" : "questionnaire");
       })
@@ -470,7 +537,14 @@ export default function App() {
     };
   }, [screen]);
 
+  useEffect(() => {
+    if (screen !== "questionnaire" || step !== 7 || resendSeconds <= 0) return;
+    const timer = window.setTimeout(() => setResendSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendSeconds, screen, step]);
+
   function updateSection<K extends keyof QuestionnaireAnswers>(section: K, patch: Partial<QuestionnaireAnswers[K]>) {
+    if (section === "contact" && "email" in patch) setEmailVerified(false);
     setAnswers((previous) => ({
       ...previous,
       [section]: { ...previous[section], ...patch },
@@ -531,7 +605,7 @@ export default function App() {
       const result = await response.json() as { draft: { answers: Partial<{ [K in keyof QuestionnaireAnswers]: Partial<QuestionnaireAnswers[K]> }>; currentStep: number; language: Language } };
       setAnswers(restoreAnswers(result.draft.answers));
       setLanguage(result.draft.language);
-      setStep(Math.min(6, Math.max(1, result.draft.currentStep)));
+      setStep(Math.min(7, Math.max(1, result.draft.currentStep)));
       setHasDraft(true);
       setScreen("questionnaire");
     } catch {
@@ -586,6 +660,7 @@ export default function App() {
       if (answers.contact.phone.replace(/\D/g, "").length < 7) nextErrors["contact.phone"] = t.phoneInvalid;
       if (!answers.contact.consent) nextErrors["contact.consent"] = t.required;
     }
+    if (step === 7 && !emailVerified && !/^\d{6}$/.test(verificationCode)) nextErrors["verification.code"] = t.codeInvalid;
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -600,7 +675,68 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    if (step === 6) {
+      if (emailVerified) {
+        setStep(7);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      await sendVerificationCode();
+      return;
+    }
+    await verifyAndSubmit();
+  }
+
+  async function sendVerificationCode() {
+    setSendingCode(true);
+    setPageError("");
     try {
+      const response = await fetch("/api/email/send-code", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: answers.contact.email }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => null) as { error?: string; retryAfterSeconds?: number } | null;
+        if (result?.error === "resend_wait") setResendSeconds(result.retryAfterSeconds ?? 60);
+        setPageError(emailErrorMessage(result?.error ?? "email_send_failed"));
+        return;
+      }
+
+      setVerificationCode("");
+      setEmailVerified(false);
+      setErrors({});
+      setResendSeconds(60);
+      setStep(7);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setPageError(t.emailSendFailed);
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
+  async function verifyAndSubmit() {
+    if (!validateCurrentStep()) return;
+    setVerifyingSubmission(true);
+    setPageError("");
+    try {
+      if (!emailVerified) {
+        const verifyResponse = await fetch("/api/email/verify", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: verificationCode }),
+        });
+        if (!verifyResponse.ok) {
+          const result = await verifyResponse.json().catch(() => null) as { error?: string } | null;
+          setPageError(emailErrorMessage(result?.error ?? "invalid_code"));
+          return;
+        }
+        setEmailVerified(true);
+      }
+
       const response = await fetch("/api/questionnaire/draft/submit", {
         method: "POST",
         credentials: "include",
@@ -608,20 +744,25 @@ export default function App() {
         body: JSON.stringify({ answers, language, currentStep: step }),
       });
       if (!response.ok) {
-        const result = await response.json().catch(() => null);
+        const result = await response.json().catch(() => null) as { error?: string; invalidFields?: string[] } | null;
         if (Array.isArray(result?.invalidFields)) {
           setErrors(Object.fromEntries(result.invalidFields.map((field: string) => [field, t.required])));
         }
-        throw new Error("submit");
+        setPageError(emailErrorMessage(result?.error ?? "spreadsheet_unavailable"));
+        return;
       }
+
       const result = await response.json() as { reportStatus: ReportStatus };
       setReportStatus(result.reportStatus ?? "pending");
       setScreen("report");
       setHasDraft(false);
+      setEmailVerified(false);
       setSaveError("");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
-      setPageError(language === "fr" ? "La demande n'a pas pu être enregistrée. Réessayez." : "Your request could not be saved. Please try again.");
+      setPageError(t.spreadsheetUnavailable);
+    } finally {
+      setVerifyingSubmission(false);
     }
   }
 
@@ -800,7 +941,7 @@ export default function App() {
         </div>
       );
     }
-    return (
+    if (step === 6) return (
       <div className="form-grid">
         <Field error={errors["contact.fullName"]} htmlFor="full-name" label={t.fullName}>
           <input autoComplete="name" id="full-name" maxLength={160} onChange={(event) => updateSection("contact", { fullName: event.target.value })} value={answers.contact.fullName} />
@@ -822,6 +963,38 @@ export default function App() {
           {errors["contact.consent"] && <span className="field__error" role="alert">{errors["contact.consent"]}</span>}
           <button className="privacy-link" onClick={() => setPrivacyOpen(true)} type="button">{t.privacyLink}</button>
         </div>
+      </div>
+    );
+    return (
+      <div className="form-grid">
+        {emailVerified ? (
+          <p className="verification-code__verified" role="status">{t.emailVerified} <strong>{answers.contact.email}</strong></p>
+        ) : (
+          <>
+            <Field error={errors["verification.code"]} htmlFor="verification-code" label={t.codeLabel}>
+              <input
+                autoComplete="one-time-code"
+                autoFocus
+                id="verification-code"
+                inputMode="numeric"
+                maxLength={6}
+                onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                value={verificationCode}
+              />
+            </Field>
+            <div className="verification-code__actions">
+              <p role="status">{t.codeSent} <strong>{answers.contact.email}</strong></p>
+              <button
+                className="text-button verification-code__resend"
+                disabled={resendSeconds > 0 || sendingCode}
+                onClick={() => void sendVerificationCode()}
+                type="button"
+              >
+                {resendSeconds > 0 ? `${t.resendCountdown} ${resendSeconds}s` : t.resendCode}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -895,12 +1068,12 @@ export default function App() {
       <AppHeader backLabel={t.previous} language={language} onBack={moveBack} onLanguageChange={selectLanguage} />
       <section className="questionnaire">
         <div className="questionnaire__meta">
-          <span className="visually-hidden">{t.step} {step} {t.of} 6</span>
+          <span className="visually-hidden">{t.step} {step} {t.of} 7</span>
           <span className="visually-hidden" role="status" aria-live="polite">
             {saveError ? t.saveFailed : saving ? t.saving : savedAt ? t.saved : t.minutes}
           </span>
         </div>
-        <div className="stepper" aria-label={`${t.step} ${step} ${t.of} 6`}>
+        <div className="stepper" aria-label={`${t.step} ${step} ${t.of} 7`}>
           {stepLabels.map((label, index) => (
             <div aria-current={step === index + 1 ? "step" : undefined} className={`stepper__item${step === index + 1 ? " stepper__item--active" : ""}${step > index + 1 ? " stepper__item--complete" : ""}`} key={label}>
               <span className="stepper__node" aria-hidden="true">{step > index + 1 ? "✓" : index + 1}</span>
@@ -910,7 +1083,7 @@ export default function App() {
           ))}
         </div>
         <header className="step-heading">
-          <p className="eyebrow">0{step} / 06 · {t[stepLabels[step - 1]]}</p>
+          <p className="eyebrow">0{step} / 07 · {t[stepLabels[step - 1]]}</p>
           <h1>{headings[step - 1]}</h1>
           <p>{descriptions[step - 1]}</p>
         </header>
@@ -920,7 +1093,7 @@ export default function App() {
           <footer className="form-footer">
             <button className="back-button" onClick={moveBack} type="button">← {step === 1 ? t.previous : t.back}</button>
             <button className="primary-button" type="submit">
-              {step === 6 ? t.submit : t.next}<span aria-hidden="true">→</span>
+              {step === 6 ? (sendingCode ? t.saving : t.sendCode) : step === 7 ? (verifyingSubmission ? t.saving : emailVerified ? t.submitVerified : t.verifyAndSubmit) : t.next}<span aria-hidden="true">→</span>
             </button>
           </footer>
         </form>

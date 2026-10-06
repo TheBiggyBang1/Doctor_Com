@@ -213,6 +213,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .rating__star--active { color: var(--gold); }
 .rating > span { margin-left: 4px; color: var(--muted); font-size: 12px; }
 .consent-field { grid-column: 1 / -1; padding-top: 2px; }
+.verification-code__actions { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.verification-code__actions p { margin: 0; color: #626875; font-size: 13px; line-height: 1.5; }
+.verification-code__verified { grid-column: 1 / -1; margin: 0; color: #477154; font-size: 14px; line-height: 1.6; }
+.verification-code__resend:disabled { color: var(--muted); cursor: default; text-decoration: none; }
 .consent-check { display: flex; align-items: flex-start; gap: 11px; color: #50545c; font-size: 13px; line-height: 1.55; cursor: pointer; }
 .consent-check input { width: 17px; height: 17px; flex: 0 0 17px; margin: 1px 0 0; accent-color: var(--ink); }
 .privacy-link, .text-button { padding: 0; border: 0; background: none; color: var(--ink); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }

@@ -10,21 +10,22 @@ Questionnaire bilingue de qualification des prospects, construit avec React/Vite
 
 ## Configuration locale
 
-1. Copier `.env.example` vers `.env`, puis renseigner `ANTHROPIC_API_KEY` et les identifiants du compte de service Google Sheets. Garder ces clés dans `.env`, jamais dans le frontend.
+1. Copier `.env.example` vers `.env`, puis renseigner les clés Anthropic, Google Sheets et Resend. Garder ces clés dans `.env`, jamais dans le frontend. `EMAIL_CODE_SECRET` doit être une chaîne aléatoire d'au moins 32 octets.
 2. Partager la feuille Google avec l'adresse du compte de service et activer l'API Google Sheets.
-3. Installer Chromium pour Playwright (une seule fois) :
+3. Vérifier un domaine d'envoi dans Resend et publier exactement ses enregistrements DNS SPF/DKIM avant d'utiliser `RESEND_FROM` avec ce domaine.
+4. Installer Chromium pour Playwright (une seule fois) :
 
    ```powershell
    npx playwright install chromium
    ```
 
-4. Lancer le frontend et l’API :
+5. Lancer le frontend et l’API :
 
    ```powershell
    npm run dev
    ```
 
-5. Ouvrir l’URL affichée par Vite, généralement `http://localhost:5173`.
+6. Ouvrir l’URL affichée par Vite, généralement `http://localhost:5173`.
 
 ## Déploiement Docker
 
@@ -33,10 +34,10 @@ Questionnaire bilingue de qualification des prospects, construit avec React/Vite
 
    ```sh
    docker build -t doctor-com .
-   docker run -d --name doctor-com --restart unless-stopped --publish 127.0.0.1:3001:3001 --volume doctor-com-data:/app/data --env-file .env doctor-com
+   docker run -d --name doctor-com --restart unless-stopped --publish 127.0.0.1:3001:3001 --env-file .env doctor-com
    ```
 
-   Le conteneur construit le frontend et le serveur TypeScript en JavaScript, installe Chromium, puis sert les deux depuis le port `3001`. Les réponses finalisées sont ajoutées à Google Sheets. Les brouillons et l'état/PDF du rapport restent en mémoire et disparaissent au redémarrage du service. Claude renvoie un fragment HTML sémantique; le serveur l'assainit et le compile en PDF.
+   Le conteneur construit le frontend et le serveur TypeScript en JavaScript, installe Chromium, puis sert les deux depuis le port `3001`. Les réponses finalisées sont ajoutées à Google Sheets. Les brouillons, vérifications email, limites quotidiennes, et l'état/PDF du rapport restent en mémoire et disparaissent au redémarrage du service. Claude renvoie un fragment HTML sémantique; le serveur l'assainit et le compile en PDF. Garder une seule instance Render active: les sessions et limites en mémoire ne sont pas partagées entre instances.
 3. Placer un reverse proxy HTTPS devant `127.0.0.1:3001`, diriger le domaine vers ce proxy, et autoriser l'accès HTTPS uniquement. Le endpoint de santé `/api/health` confirme que le serveur HTTP répond.
 
 ## Contrôles
@@ -54,6 +55,6 @@ Les brouillons sont repris grâce à un cookie `HttpOnly` et restent uniquement 
 
 ## Périmètre
 
-Les emails de confirmation, les protections anti-bot, les notifications et la synchronisation Odoo ne sont pas inclus.
+Les CAPTCHA, notifications et la synchronisation Odoo ne sont pas inclus. La vérification email utilise Resend, des codes à usage limité et des plafonds en mémoire; elle nécessite une seule instance active pour partager correctement les sessions et compteurs.
 
 La politique de confidentialité doit être finalisée avant tout déploiement public.

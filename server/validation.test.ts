@@ -2,7 +2,18 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
 import { createApp } from "./app.js";
+import {
+  createEmailCodeProof,
+  emailCodeLifetimeMs,
+  generateEmailCode,
+  isDisposableEmail,
+  normalizeEmail,
+  verifyEmailCodeProof,
+} from "./emailVerification.js";
+import { createReportJobs } from "./reportJobs.js";
 import { draftPayloadSchema, validateSubmission } from "./validation.js";
+
+const testEmailCodeSecret = "test-email-code-secret-at-least-32-characters-long";
 
 const completeAnswers = {
   company: {
@@ -48,8 +59,16 @@ const completeAnswers = {
   },
 };
 
-async function withApi<T>(run: (baseUrl: string) => Promise<T>, options: Parameters<typeof createApp>[0] = {}) {
-  const server = createApp(options).listen(0);
+async function withApi<T>(
+  run: (baseUrl: string) => Promise<T>,
+  options: NonNullable<Parameters<typeof createApp>[0]> = {},
+) {
+  const server = createApp({
+    emailCodeSecret: testEmailCodeSecret,
+    emailExists: async () => false,
+    sendVerificationEmail: async () => undefined,
+    ...options,
+  }).listen(0);
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const address = server.address() as AddressInfo;
   try {
@@ -61,9 +80,64 @@ async function withApi<T>(run: (baseUrl: string) => Promise<T>, options: Paramet
   }
 }
 
+async function createDraftCookie(baseUrl: string) {
+  const response = await fetch(`${baseUrl}/api/questionnaire/draft`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ language: "fr", currentStep: 6, answers: completeAnswers }),
+  });
+  assert.equal(response.status, 201);
+  const cookie = response.headers.get("set-cookie")?.split(";")[0];
+  assert.ok(cookie);
+  return cookie;
+}
+
+function responseCookie(response: Response) {
+  return response.headers.get("set-cookie")?.split(";")[0] ?? "";
+}
+
+async function sendCode(baseUrl: string, draftCookie: string, email = completeAnswers.contact.email, headers: Record<string, string> = {}) {
+  return fetch(`${baseUrl}/api/email/send-code`, {
+    method: "POST",
+    headers: { cookie: draftCookie, "content-type": "application/json", ...headers },
+    body: JSON.stringify({ email }),
+  });
+}
+
+async function verifyCode(baseUrl: string, draftCookie: string, codeCookie: string, code: string, headers: Record<string, string> = {}) {
+  return fetch(`${baseUrl}/api/email/verify`, {
+    method: "POST",
+    headers: { cookie: `${draftCookie}; ${codeCookie}`, "content-type": "application/json", ...headers },
+    body: JSON.stringify({ code }),
+  });
+}
+
 test("accepts a complete questionnaire and a public email provider", () => {
   const result = validateSubmission(completeAnswers);
   assert.equal(result.success, true);
+});
+
+test("normalizes Gmail aliases and strips plus tags from all email addresses", () => {
+  assert.equal(normalizeEmail(" First.Last+campaign@GoogleMail.com "), "firstlast@gmail.com");
+  assert.equal(normalizeEmail("User.Name+campaign@example.com"), "user.name@example.com");
+  assert.equal(normalizeEmail("not-an-email"), null);
+});
+
+test("rejects disposable email domains", () => {
+  assert.equal(isDisposableEmail("person@mailinator.com"), true);
+  assert.equal(isDisposableEmail("person@example.com"), false);
+});
+
+test("email code proof validates code and ten-minute expiry without storing the code", () => {
+  const code = "004281";
+  const expiresAt = 1_000_000 + emailCodeLifetimeMs;
+  const proof = createEmailCodeProof(testEmailCodeSecret, "person@example.com", code, expiresAt);
+  const decoded = JSON.parse(Buffer.from(proof, "base64url").toString("utf8")) as Record<string, unknown>;
+  assert.equal("code" in decoded, false);
+  assert.deepEqual(verifyEmailCodeProof(proof, code, testEmailCodeSecret, 1_000_000), { email: "person@example.com" });
+  assert.deepEqual(verifyEmailCodeProof(proof, "999999", testEmailCodeSecret, 1_000_000), { error: "invalid_code" });
+  assert.deepEqual(verifyEmailCodeProof(proof, code, testEmailCodeSecret, expiresAt), { error: "expired_code" });
+  assert.match(generateEmailCode(), /^\d{6}$/);
 });
 
 test("accepts a final submission without collecting browser geolocation", () => {
@@ -155,16 +229,184 @@ test("submit endpoint rejects missing consent before accessing storage", async (
   });
 });
 
-test("submission appends its answers to Google Sheets before acceptance", async () => {
+test("email verification sends a code without returning it and accepts the valid code", async () => {
+  let deliveredCode = "";
   let appendedAnswers: unknown;
   await withApi(async (baseUrl) => {
-    const draft = await fetch(`${baseUrl}/api/questionnaire/draft`, {
+    const draftCookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, draftCookie);
+    assert.equal(sent.status, 200);
+    const sentBody = await sent.json() as Record<string, unknown>;
+    assert.deepEqual(sentBody, { sent: true, expiresInSeconds: 600 });
+    assert.ok(!JSON.stringify(sentBody).includes(deliveredCode));
+    const codeCookieHeader = sent.headers.get("set-cookie") ?? "";
+    assert.match(codeCookieHeader, /HttpOnly/i);
+    assert.match(codeCookieHeader, /Secure/i);
+    assert.match(codeCookieHeader, /SameSite=Lax/i);
+    const codeCookie = responseCookie(sent);
+
+    const verified = await verifyCode(baseUrl, draftCookie, codeCookie.split(";")[0], deliveredCode);
+    assert.equal(verified.status, 200);
+    assert.deepEqual(await verified.json(), { verified: true });
+    assert.match(verified.headers.get("set-cookie") ?? "", /Expires=Thu, 01 Jan 1970/i);
+
+    const submitted = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ language: "fr", currentStep: 6, answers: completeAnswers }),
+      headers: { cookie: draftCookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 7, answers: completeAnswers }),
     });
-    const cookie = draft.headers.get("set-cookie")?.split(";")[0];
-    assert.ok(cookie);
+    assert.equal(submitted.status, 202);
+  }, {
+    sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
+    appendSubmission: async ({ answers }) => { appendedAnswers = answers; return true; },
+    generatePlan: async () => "<h1>Plan</h1>",
+  });
+  assert.deepEqual(appendedAnswers, completeAnswers);
+  assert.match(deliveredCode, /^\d{6}$/);
+});
+
+test("send-code rejects email already in finalized sheet data", async () => {
+  let sent = false;
+  await withApi(async (baseUrl) => {
+    const draftCookie = await createDraftCookie(baseUrl);
+    const response = await sendCode(baseUrl, draftCookie, "First.Last+campaign@googlemail.com");
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { error: "email_already_used" });
+  }, {
+    emailExists: async (email) => email === "firstlast@gmail.com",
+    sendVerificationEmail: async () => { sent = true; },
+  });
+  assert.equal(sent, false);
+});
+
+test("send-code enforces the 60-second resend cooldown", async () => {
+  let sentCount = 0;
+  let now = 20_000;
+  await withApi(async (baseUrl) => {
+    const draftCookie = await createDraftCookie(baseUrl);
+    assert.equal((await sendCode(baseUrl, draftCookie)).status, 200);
+    const cooldown = await sendCode(baseUrl, draftCookie);
+    assert.equal(cooldown.status, 429);
+    assert.deepEqual(await cooldown.json(), { error: "resend_wait", retryAfterSeconds: 60 });
+    now += 60_000;
+    assert.equal((await sendCode(baseUrl, draftCookie)).status, 200);
+  }, {
+    now: () => now,
+    sendVerificationEmail: async () => { sentCount += 1; },
+  });
+  assert.equal(sentCount, 2);
+});
+
+test("email verification rejects wrong codes and reports expiry", async () => {
+  let deliveredCode = "";
+  let now = 10_000;
+  await withApi(async (baseUrl) => {
+    const draftCookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, draftCookie);
+    const codeCookie = responseCookie(sent).split(";")[0];
+
+    const wrong = await verifyCode(baseUrl, draftCookie, codeCookie, "999999");
+    assert.equal(wrong.status, 400);
+    assert.deepEqual(await wrong.json(), { error: "invalid_code" });
+
+    now += emailCodeLifetimeMs + 1;
+    const expired = await verifyCode(baseUrl, draftCookie, codeCookie, deliveredCode);
+    assert.equal(expired.status, 410);
+    assert.deepEqual(await expired.json(), { error: "expired_code" });
+  }, {
+    now: () => now,
+    sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
+  });
+});
+
+test("verified email survives draft reload but is cleared when the contact email changes", async () => {
+  let deliveredCode = "";
+  await withApi(async (baseUrl) => {
+    const cookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, cookie);
+    await verifyCode(baseUrl, cookie, responseCookie(sent), deliveredCode);
+
+    const restored = await fetch(`${baseUrl}/api/questionnaire/draft`, { headers: { cookie } });
+    assert.equal((await restored.json() as { draft: { emailVerified: boolean } }).draft.emailVerified, true);
+
+    const updatedAnswers = { ...completeAnswers, contact: { ...completeAnswers.contact, email: "another@example.com" } };
+    const updated = await fetch(`${baseUrl}/api/questionnaire/draft`, {
+      method: "PUT",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 6, answers: updatedAnswers }),
+    });
+    assert.equal(updated.status, 200);
+    const restoredAfterChange = await fetch(`${baseUrl}/api/questionnaire/draft`, { headers: { cookie } });
+    assert.equal((await restoredAfterChange.json() as { draft: { emailVerified: boolean } }).draft.emailVerified, false);
+  }, { sendVerificationEmail: async (_email, code) => { deliveredCode = code; } });
+});
+
+test("send-code enforces the per-IP limit", async () => {
+  await withApi(async (baseUrl) => {
+    const draftCookie = await createDraftCookie(baseUrl);
+    const email = "rate-limit-ip@example.com";
+    const first = await sendCode(baseUrl, draftCookie, email);
+    assert.equal(first.status, 200);
+    assert.equal((await sendCode(baseUrl, draftCookie, email)).status, 429);
+    assert.equal((await sendCode(baseUrl, draftCookie, email)).status, 429);
+    const limited = await sendCode(baseUrl, draftCookie, email);
+    assert.equal(limited.status, 429);
+    assert.deepEqual(await limited.json(), { error: "rate_limited" });
+  });
+});
+
+test("send-code enforces the normalized-email limit across IPs", async () => {
+  await withApi(async (baseUrl) => {
+    const draftCookie = await createDraftCookie(baseUrl);
+    const email = "Rate.Limit+tag@example.com";
+    assert.equal((await sendCode(baseUrl, draftCookie, email, { "x-forwarded-for": "203.0.113.11" })).status, 200);
+    assert.equal((await sendCode(baseUrl, draftCookie, email, { "x-forwarded-for": "203.0.113.12" })).status, 429);
+    assert.equal((await sendCode(baseUrl, draftCookie, email, { "x-forwarded-for": "203.0.113.13" })).status, 429);
+    const limited = await sendCode(baseUrl, draftCookie, email, { "x-forwarded-for": "203.0.113.14" });
+    assert.equal(limited.status, 429);
+    assert.deepEqual(await limited.json(), { error: "rate_limited" });
+  });
+});
+
+test("verify-code allows five attempts per IP in fifteen minutes", async () => {
+  let deliveredCode = "";
+  await withApi(async (baseUrl) => {
+    const draftCookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, draftCookie);
+    const codeCookie = responseCookie(sent);
+    const wrongCode = deliveredCode === "000000" ? "000001" : "000000";
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const response = await verifyCode(baseUrl, draftCookie, codeCookie, wrongCode);
+      assert.equal(response.status, 400);
+    }
+    const limited = await verifyCode(baseUrl, draftCookie, codeCookie, wrongCode);
+    assert.equal(limited.status, 429);
+    assert.deepEqual(await limited.json(), { error: "too_many_attempts" });
+  }, { sendVerificationEmail: async (_email, code) => { deliveredCode = code; } });
+});
+
+test("submission is refused until the session email is verified", async () => {
+  let appended = false;
+  await withApi(async (baseUrl) => {
+    const draftCookie = await createDraftCookie(baseUrl);
+    const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+      method: "POST",
+      headers: { cookie: draftCookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 7, answers: completeAnswers }),
+    });
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "email_verification_required" });
+  }, { appendSubmission: async () => { appended = true; return true; } });
+  assert.equal(appended, false);
+});
+
+test("submission appends its answers to Google Sheets before acceptance", async () => {
+  let appendedAnswers: unknown;
+  let deliveredCode = "";
+  await withApi(async (baseUrl) => {
+    const cookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, cookie);
+    await verifyCode(baseUrl, cookie, responseCookie(sent), deliveredCode);
     const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
       method: "POST",
       headers: { cookie: cookie!, "content-type": "application/json" },
@@ -173,6 +415,7 @@ test("submission appends its answers to Google Sheets before acceptance", async 
     assert.equal(response.status, 202);
     assert.deepEqual(await response.json(), { status: "submitted", reportStatus: "pending" });
   }, {
+    sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
     appendSubmission: async ({ answers }) => {
       appendedAnswers = answers;
       return true;
@@ -183,14 +426,11 @@ test("submission appends its answers to Google Sheets before acceptance", async 
 });
 
 test("submission is not accepted when Google Sheets append fails", async () => {
+  let deliveredCode = "";
   await withApi(async (baseUrl) => {
-    const draft = await fetch(`${baseUrl}/api/questionnaire/draft`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ language: "fr", currentStep: 6, answers: completeAnswers }),
-    });
-    const cookie = draft.headers.get("set-cookie")?.split(";")[0];
-    assert.ok(cookie);
+    const cookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, cookie);
+    await verifyCode(baseUrl, cookie, responseCookie(sent), deliveredCode);
     const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
       method: "POST",
       headers: { cookie: cookie!, "content-type": "application/json" },
@@ -198,5 +438,107 @@ test("submission is not accepted when Google Sheets append fails", async () => {
     });
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { error: "spreadsheet_unavailable" });
-  }, { appendSubmission: async () => false });
+  }, {
+    sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
+    appendSubmission: async () => false,
+  });
+});
+
+test("daily report cap refuses submission before appending to Sheets", async () => {
+  const previousCap = process.env.DAILY_REPORT_CAP;
+  process.env.DAILY_REPORT_CAP = "0";
+  let deliveredCode = "";
+  let appended = false;
+  try {
+    await withApi(async (baseUrl) => {
+      const cookie = await createDraftCookie(baseUrl);
+      const sent = await sendCode(baseUrl, cookie);
+      await verifyCode(baseUrl, cookie, responseCookie(sent), deliveredCode);
+      const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ language: "fr", currentStep: 7, answers: completeAnswers }),
+      });
+      assert.equal(response.status, 429);
+      assert.deepEqual(await response.json(), { error: "daily_report_cap" });
+    }, {
+      reportJobs: createReportJobs(),
+      sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
+      appendSubmission: async () => { appended = true; return true; },
+    });
+  } finally {
+    if (previousCap === undefined) delete process.env.DAILY_REPORT_CAP;
+    else process.env.DAILY_REPORT_CAP = previousCap;
+  }
+  assert.equal(appended, false);
+});
+
+test("submission rechecks the Sheet for a duplicate after email verification", async () => {
+  let emailChecks = 0;
+  let appended = false;
+  let deliveredCode = "";
+  await withApi(async (baseUrl) => {
+    const cookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, cookie);
+    await verifyCode(baseUrl, cookie, responseCookie(sent), deliveredCode);
+    const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 7, answers: completeAnswers }),
+    });
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { error: "email_already_used" });
+  }, {
+    emailExists: async () => ++emailChecks > 1,
+    sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
+    appendSubmission: async () => { appended = true; return true; },
+  });
+  assert.equal(emailChecks, 2);
+  assert.equal(appended, false);
+});
+
+test("send-code IP limits use CF-Connecting-IP behind a shared Render proxy", async () => {
+  await withApi(async (baseUrl) => {
+    const sendFrom = async (clientIp: string, index: number) => {
+      const draftCookie = await createDraftCookie(baseUrl);
+      return sendCode(baseUrl, draftCookie, `cloudflare-${index}@example.com`, {
+        "x-forwarded-for": "198.51.100.20",
+        "cf-connecting-ip": clientIp,
+      });
+    };
+
+    assert.equal((await sendFrom("203.0.113.10", 1)).status, 200);
+    assert.equal((await sendFrom("203.0.113.11", 2)).status, 200);
+    assert.equal((await sendFrom("203.0.113.12", 3)).status, 200);
+    assert.equal((await sendFrom("203.0.113.10", 4)).status, 200);
+    assert.equal((await sendFrom("203.0.113.10", 5)).status, 200);
+    const limited = await sendFrom("203.0.113.10", 6);
+    assert.equal(limited.status, 429);
+  });
+});
+
+test("verify-code IP limits use CF-Connecting-IP behind a shared Render proxy", async () => {
+  let deliveredCode = "";
+  await withApi(async (baseUrl) => {
+    const cookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, cookie);
+    const codeCookie = responseCookie(sent);
+    for (let attempt = 1; attempt <= 6; attempt += 1) {
+      const response = await verifyCode(
+        baseUrl,
+        cookie,
+        codeCookie,
+        deliveredCode === "000000" ? "000001" : "000000",
+        {
+          "x-forwarded-for": "198.51.100.20",
+          "cf-connecting-ip": `203.0.113.${attempt}`,
+        },
+      );
+      assert.equal(response.status, 400);
+    }
+  }, { sendVerificationEmail: async (_email, code) => { deliveredCode = code; } });
+});
+
+test("Express trusts one Render proxy hop", () => {
+  assert.equal(createApp().get("trust proxy"), 1);
 });

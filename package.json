@@ -14,13 +14,16 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
+    "disposable-email-domains": "^1.0.62",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.7.1",
     "googleapis": "^183.0.0",
     "pdfkit": "^0.20.2",
     "playwright": "^1.63.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^6.32.1",
     "sanitize-html": "^2.18.0",
     "zod": "^3.24.2"
   },
@@ -36,5 +39,8 @@
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "vite": "^6.2.2"
+  },
+  "overrides": {
+    "shell-quote": "^1.11.0"
   }
 }

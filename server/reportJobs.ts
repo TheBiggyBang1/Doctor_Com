@@ -21,9 +21,37 @@ function describeFailure(error: unknown) {
 export function createReportJobs(
   generatePlan: PlanGenerator = generateCommunicationPlan,
   compilePdf: ReportPdfCompiler = renderHtmlReportPdf,
+  now: () => number = Date.now,
 ) {
   const active = new Set<number>();
   const jobs = new Map<number, ReportJob>();
+  const configuredDailyCap = Number(process.env.DAILY_REPORT_CAP ?? 100);
+  const dailyCap = Number.isFinite(configuredDailyCap) && configuredDailyCap >= 0
+    ? Math.floor(configuredDailyCap)
+    : 100;
+  let usageDay = "";
+  let dailyUsage = 0;
+
+  function refreshDailyUsage() {
+    const today = new Date(now()).toISOString().slice(0, 10);
+    if (today !== usageDay) {
+      usageDay = today;
+      dailyUsage = 0;
+    }
+  }
+
+  function reserveDailySlot(): string | null {
+    refreshDailyUsage();
+    if (dailyUsage >= dailyCap) return null;
+    dailyUsage += 1;
+    return usageDay;
+  }
+
+  function releaseDailySlot(reservedDay: string) {
+    refreshDailyUsage();
+    if (usageDay !== reservedDay) return;
+    dailyUsage = Math.max(0, dailyUsage - 1);
+  }
 
   async function run(
     id: number,
@@ -51,6 +79,8 @@ export function createReportJobs(
 
   return {
     run,
+    reserveDailySlot,
+    releaseDailySlot,
     get(id: number) {
       return jobs.get(id);
     },

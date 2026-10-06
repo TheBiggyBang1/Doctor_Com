@@ -67,7 +67,7 @@ export type QuestionnaireAnswers = z.infer<typeof answersSchema>;
 
 export const draftPayloadSchema = z.object({
   language: z.enum(["fr", "en"]),
-  currentStep: z.number().int().min(1).max(6),
+  currentStep: z.number().int().min(1).max(7),
   answers: answersSchema,
 }).strict();
 
