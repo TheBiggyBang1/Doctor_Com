@@ -9,6 +9,7 @@ import {
   generateEmailCode,
   isDisposableEmail,
   normalizeEmail,
+  type EmailLanguage,
   sendEmailVerificationCode,
   verifyEmailCodeProof,
 } from "./emailVerification.js";
@@ -143,6 +144,11 @@ export function createApp(
       response.status(400).json({ error: "invalid_email" });
       return;
     }
+    const language = request.body?.language;
+    if (language !== "fr" && language !== "en") {
+      response.status(400).json({ error: "invalid_language" });
+      return;
+    }
     if (isDisposableEmail(email)) {
       response.status(400).json({ error: "disposable_email" });
       return;
@@ -179,7 +185,7 @@ export function createApp(
     const code = generateEmailCode();
     const expiresAt = now() + emailCodeLifetimeMs;
     try {
-      await sendVerificationEmail(email, code);
+      await sendVerificationEmail(email, code, language as EmailLanguage);
     } catch (error) {
       console.error("Verification email could not be sent", error);
       response.status(503).json({ error: "email_send_failed" });

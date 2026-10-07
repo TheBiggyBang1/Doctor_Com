@@ -4,6 +4,7 @@ import test from "node:test";
 import { createApp } from "./app.js";
 import {
   createEmailCodeProof,
+  buildVerificationEmail,
   emailCodeLifetimeMs,
   generateEmailCode,
   isDisposableEmail,
@@ -96,11 +97,17 @@ function responseCookie(response: Response) {
   return response.headers.get("set-cookie")?.split(";")[0] ?? "";
 }
 
-async function sendCode(baseUrl: string, draftCookie: string, email = completeAnswers.contact.email, headers: Record<string, string> = {}) {
+async function sendCode(
+  baseUrl: string,
+  draftCookie: string,
+  email = completeAnswers.contact.email,
+  headers: Record<string, string> = {},
+  language: "fr" | "en" = "fr",
+) {
   return fetch(`${baseUrl}/api/email/send-code`, {
     method: "POST",
     headers: { cookie: draftCookie, "content-type": "application/json", ...headers },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, language }),
   });
 }
 
@@ -138,6 +145,22 @@ test("email code proof validates code and ten-minute expiry without storing the 
   assert.deepEqual(verifyEmailCodeProof(proof, "999999", testEmailCodeSecret, 1_000_000), { error: "invalid_code" });
   assert.deepEqual(verifyEmailCodeProof(proof, code, testEmailCodeSecret, expiresAt), { error: "expired_code" });
   assert.match(generateEmailCode(), /^\d{6}$/);
+});
+
+test("verification email content is branded and localized in French or English", () => {
+  const french = buildVerificationEmail("004281", "fr");
+  const english = buildVerificationEmail("004281", "en");
+
+  assert.match(french.subject, /Votre code/);
+  assert.match(french.html, /lang="fr"/);
+  assert.match(french.html, /Confirmez votre adresse email/);
+  assert.match(french.html, /004281/);
+  assert.match(french.html, /10 minutes/);
+  assert.match(english.subject, /Your verification code/);
+  assert.match(english.html, /lang="en"/);
+  assert.match(english.html, /Confirm your email address/);
+  assert.match(english.html, /004281/);
+  assert.match(english.html, /10 minutes/);
 });
 
 test("accepts a final submission without collecting browser geolocation", () => {
@@ -231,6 +254,7 @@ test("submit endpoint rejects missing consent before accessing storage", async (
 
 test("email verification sends a code without returning it and accepts the valid code", async () => {
   let deliveredCode = "";
+  let deliveredLanguage: string | undefined;
   let appendedAnswers: unknown;
   await withApi(async (baseUrl) => {
     const draftCookie = await createDraftCookie(baseUrl);
@@ -257,12 +281,23 @@ test("email verification sends a code without returning it and accepts the valid
     });
     assert.equal(submitted.status, 202);
   }, {
-    sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
+    sendVerificationEmail: async (_email, code, language) => { deliveredCode = code; deliveredLanguage = language; },
     appendSubmission: async ({ answers }) => { appendedAnswers = answers; return true; },
     generatePlan: async () => "<h1>Plan</h1>",
   });
   assert.deepEqual(appendedAnswers, completeAnswers);
   assert.match(deliveredCode, /^\d{6}$/);
+  assert.equal(deliveredLanguage, "fr");
+});
+
+test("send-code sends the verification email in the selected questionnaire language", async () => {
+  let deliveredLanguage: string | undefined;
+  await withApi(async (baseUrl) => {
+    const cookie = await createDraftCookie(baseUrl);
+    const response = await sendCode(baseUrl, cookie, "english@example.com", {}, "en");
+    assert.equal(response.status, 200);
+  }, { sendVerificationEmail: async (_email, _code, language) => { deliveredLanguage = language; } });
+  assert.equal(deliveredLanguage, "en");
 });
 
 test("send-code rejects email already in finalized sheet data", async () => {

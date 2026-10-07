@@ -695,7 +695,7 @@ export default function App() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: answers.contact.email }),
+        body: JSON.stringify({ email: answers.contact.email, language }),
       });
       if (!response.ok) {
         const result = await response.json().catch(() => null) as { error?: string; retryAfterSeconds?: number } | null;
