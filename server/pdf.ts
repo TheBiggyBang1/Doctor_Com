@@ -1,4 +1,5 @@
 import PDFDocument from "pdfkit";
+import { companyLogoBuffer } from "./pdfAssets.js";
 
 function plainMarkdown(text: string) {
   return text
@@ -107,12 +108,14 @@ export function renderPlanPdf(markdown: string): Promise<Buffer> {
     }
 
     const pages = document.bufferedPageRange();
+    const logo = companyLogoBuffer();
     for (let index = pages.start; index < pages.start + pages.count; index += 1) {
       document.switchToPage(index);
       const footerTop = document.page.height - 44;
       document.moveTo(58, footerTop).lineTo(document.page.width - 58, footerTop).lineWidth(0.5).strokeColor("#E7E2D8").stroke();
-      document.fillColor("#74777C").font("Helvetica").fontSize(8)
-        .text("5 Sens Advertising  ·  Document confidentiel", 58, footerTop + 10, { lineBreak: false });
+      document.image(logo, 58, footerTop + 7, { fit: [26, 19] });
+      document.fillColor("#74777C").font("Helvetica").fontSize(7)
+        .text("5sens.tn  ·  +216 26 00 00 88  ·  +216 22 50 55 01", 91, footerTop + 13, { lineBreak: false });
       const pageLabel = `${index + 1} / ${pages.count}`;
       const pageLabelX = document.page.width - 58 - document.widthOfString(pageLabel);
       document.text(pageLabel, pageLabelX, footerTop + 10, { lineBreak: false });
