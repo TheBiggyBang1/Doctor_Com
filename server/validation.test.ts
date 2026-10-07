@@ -300,6 +300,7 @@ test("sends a category A alert after a successful submission with contact detail
     score: { total: number; category: string };
     submittedAt: string;
   } | undefined;
+  let sheetTimestamp = "";
   const submittedAt = 1_800_000_000_000;
 
   await withApi(async (baseUrl) => {
@@ -324,7 +325,7 @@ test("sends a category A alert after a successful submission with contact detail
     now: () => submittedAt,
     sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
     sendLeadAlert: async (input) => { alert = input; },
-    appendSubmission: async () => true,
+    appendSubmission: async (input) => { sheetTimestamp = input.submittedAt; return true; },
     generatePlan: async () => "<h1>Plan</h1>",
   });
 
@@ -334,6 +335,7 @@ test("sends a category A alert after a successful submission with contact detail
   assert.equal(alert.answers.contact.fullName, "Sana Ben Ali");
   assert.equal(alert.answers.contact.email, "sana.personal@gmail.com");
   assert.equal(alert.submittedAt, new Date(submittedAt).toISOString());
+  assert.equal(sheetTimestamp, alert.submittedAt);
 });
 
 test("send-code sends the verification email in the selected questionnaire language", async () => {

@@ -6,6 +6,7 @@ export type GoogleSubmissionInput = {
   language: "fr" | "en";
   answers: QuestionnaireAnswers;
   score: { total: number; category: "A" | "B" | "C" };
+  submittedAt: string;
 };
 
 function toJsonValue(value: unknown) {
@@ -53,6 +54,7 @@ export function buildGoogleSheetRow(input: GoogleSubmissionInput) {
     consent: contact.consent ? "yes" : "no",
     score_total: input.score.total,
     score_category: input.score.category,
+    submitted_at: input.submittedAt,
     raw_payload: JSON.stringify(input.answers),
   };
 
@@ -86,6 +88,7 @@ export function buildGoogleSheetRow(input: GoogleSubmissionInput) {
     payload.consent,
     payload.score_total,
     payload.score_category,
+    payload.submitted_at,
     payload.raw_payload,
   ];
 

@@ -14,15 +14,17 @@ test("buildGoogleSheetRow includes full form data and scores without browser coo
       contact: { fullName: "Samira", role: "Founder", email: "samira@example.com", phone: "+21622123456", consent: true },
     },
     score: { total: 61, category: "B" },
+    submittedAt: "2026-10-07T21:30:00.000Z",
   });
 
   assert.equal(row[0], "fr");
-  assert.equal(row.length, 30);
+  assert.equal(row.length, 31);
   assert.equal(row[1], "Acme");
   assert.equal(row[4], "Tunis");
   assert.equal(row[25], "+21622123456");
   assert.equal(row[26], "yes");
   assert.equal(row[27], "61");
   assert.equal(row[28], "B");
-  assert.match(row[29], /"company".*"name".*"Acme"/s);
+  assert.equal(row[29], "2026-10-07T21:30:00.000Z");
+  assert.match(row[30], /"company".*"name".*"Acme"/s);
 });

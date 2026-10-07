@@ -370,10 +370,12 @@ export function createApp(
           response.status(429).json({ error: "daily_report_cap" });
           return;
         }
+        const submittedAt = now();
         const appended = await appendSubmission({
           language: payload.data.language,
           answers: validation.data,
           score: { total: score.total, category: score.category },
+          submittedAt: new Date(submittedAt).toISOString(),
         });
         if (!appended) {
           reportJobs.releaseDailySlot(reservedReportDay);
@@ -388,7 +390,6 @@ export function createApp(
         draft.status = "submitted";
         draft.lead_category = score.category;
         draft.report_status = "pending";
-        const submittedAt = now();
         draft.updated_at = submittedAt;
         response.status(202).json({ status: "submitted", reportStatus: "pending" });
         if (score.category === "A") {
