@@ -256,6 +256,7 @@ test("email verification sends a code without returning it and accepts the valid
   let deliveredCode = "";
   let deliveredLanguage: string | undefined;
   let appendedAnswers: unknown;
+  let leadAlertSent = false;
   await withApi(async (baseUrl) => {
     const draftCookie = await createDraftCookie(baseUrl);
     const sent = await sendCode(baseUrl, draftCookie);
@@ -282,12 +283,57 @@ test("email verification sends a code without returning it and accepts the valid
     assert.equal(submitted.status, 202);
   }, {
     sendVerificationEmail: async (_email, code, language) => { deliveredCode = code; deliveredLanguage = language; },
+    sendLeadAlert: async () => { leadAlertSent = true; },
     appendSubmission: async ({ answers }) => { appendedAnswers = answers; return true; },
     generatePlan: async () => "<h1>Plan</h1>",
   });
   assert.deepEqual(appendedAnswers, completeAnswers);
   assert.match(deliveredCode, /^\d{6}$/);
   assert.equal(deliveredLanguage, "fr");
+  assert.equal(leadAlertSent, false);
+});
+
+test("sends a category A alert after a successful submission with contact details and timestamp", async () => {
+  let deliveredCode = "";
+  let alert: {
+    answers: typeof completeAnswers;
+    score: { total: number; category: string };
+    submittedAt: string;
+  } | undefined;
+  const submittedAt = 1_800_000_000_000;
+
+  await withApi(async (baseUrl) => {
+    const draftCookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, draftCookie);
+    await verifyCode(baseUrl, draftCookie, responseCookie(sent), deliveredCode);
+
+    const highValueAnswers = {
+      ...completeAnswers,
+      company: { ...completeAnswers.company, size: "enterprise" as const },
+      budget: { ...completeAnswers.budget, amountBand: "high" as const, urgency: "one-month" as const },
+    };
+    const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+      method: "POST",
+      headers: { cookie: draftCookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 7, answers: highValueAnswers }),
+    });
+
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { status: "submitted", reportStatus: "pending" });
+  }, {
+    now: () => submittedAt,
+    sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
+    sendLeadAlert: async (input) => { alert = input; },
+    appendSubmission: async () => true,
+    generatePlan: async () => "<h1>Plan</h1>",
+  });
+
+  assert.ok(alert);
+  assert.equal(alert.score.category, "A");
+  assert.equal(alert.score.total, 100);
+  assert.equal(alert.answers.contact.fullName, "Sana Ben Ali");
+  assert.equal(alert.answers.contact.email, "sana.personal@gmail.com");
+  assert.equal(alert.submittedAt, new Date(submittedAt).toISOString());
 });
 
 test("send-code sends the verification email in the selected questionnaire language", async () => {

@@ -10,7 +10,7 @@ Questionnaire bilingue de qualification des prospects, construit avec React/Vite
 
 ## Configuration locale
 
-1. Copier `.env.example` vers `.env`, puis renseigner les clés Anthropic, Google Sheets et Resend. Garder ces clés dans `.env`, jamais dans le frontend. `EMAIL_CODE_SECRET` doit être une chaîne aléatoire d'au moins 32 octets.
+1. Copier `.env.example` vers `.env`, puis renseigner les clés Anthropic, Google Sheets et Resend. Définir `LEAD_ALERT_EMAIL` avec l'adresse qui doit recevoir les alertes pour les leads de catégorie A. Garder ces clés dans `.env`, jamais dans le frontend. `EMAIL_CODE_SECRET` doit être une chaîne aléatoire d'au moins 32 octets.
 2. Partager la feuille Google avec l'adresse du compte de service et activer l'API Google Sheets.
 3. Vérifier un domaine d'envoi dans Resend et publier exactement ses enregistrements DNS SPF/DKIM avant d'utiliser `RESEND_FROM` avec ce domaine.
 4. Installer Chromium pour Playwright (une seule fois) :

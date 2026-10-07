@@ -15,6 +15,7 @@ import {
 } from "./emailVerification.js";
 import { createReportJobs, type PlanGenerator, type ReportStatus } from "./reportJobs.js";
 import { calculateLeadScore, type LeadCategory } from "./scoring.js";
+import { sendCategoryALeadAlert } from "./leadAlert.js";
 import { draftPayloadSchema, validateSubmission, type QuestionnaireAnswers } from "./validation.js";
 
 const cookieName = "doctor_com_draft";
@@ -91,6 +92,7 @@ export function createApp(
     appendSubmission?: typeof appendSubmissionToGoogleSheet;
     emailExists?: typeof hasNormalizedEmailInGoogleSheet;
     sendVerificationEmail?: typeof sendEmailVerificationCode;
+    sendLeadAlert?: typeof sendCategoryALeadAlert;
     emailCodeSecret?: string;
     now?: () => number;
   } = {},
@@ -100,6 +102,7 @@ export function createApp(
   const appendSubmission = options.appendSubmission ?? appendSubmissionToGoogleSheet;
   const emailExists = options.emailExists ?? hasNormalizedEmailInGoogleSheet;
   const sendVerificationEmail = options.sendVerificationEmail ?? sendEmailVerificationCode;
+  const sendLeadAlert = options.sendLeadAlert ?? sendCategoryALeadAlert;
   const emailCodeSecret = options.emailCodeSecret ?? process.env.EMAIL_CODE_SECRET;
   const now = options.now ?? Date.now;
   const drafts = new Map<string, DraftRecord>();
@@ -385,8 +388,18 @@ export function createApp(
         draft.status = "submitted";
         draft.lead_category = score.category;
         draft.report_status = "pending";
-        draft.updated_at = now();
+        const submittedAt = now();
+        draft.updated_at = submittedAt;
         response.status(202).json({ status: "submitted", reportStatus: "pending" });
+        if (score.category === "A") {
+          void sendLeadAlert({
+            answers: validation.data,
+            score: { total: score.total, category: score.category },
+            submittedAt: new Date(submittedAt).toISOString(),
+          }).catch((error: unknown) => {
+            console.error("Category A lead alert could not be sent", error);
+          });
+        }
         void reportJobs.run(draft.id, validation.data, score.category, payload.data.language);
       } catch {
         if (reservedReportDay) reportJobs.releaseDailySlot(reservedReportDay);
