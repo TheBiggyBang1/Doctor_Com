@@ -66,16 +66,19 @@ export async function renderHtmlReportPdf(fragment: string, language: "fr" | "en
     const page = await browser.newPage({ javaScriptEnabled: false });
     await page.setContent(buildReportDocument(fragment, language), { waitUntil: "load", timeout: 15_000 });
     const logo = companyLogoBuffer().toString("base64");
-    const footerTemplate = `<div style="box-sizing:border-box;width:100%;padding:3mm 17mm 0;border-top:0.5px solid #dce1e8;color:#596273;font:7pt Arial,sans-serif;display:flex;align-items:center;justify-content:space-between">
+    const footerTemplate = `<div style="box-sizing:border-box;width:100%;padding:2.5mm 17mm 0;border-top:0.5px solid #dce1e8;color:#596273;font:7pt Arial,sans-serif;display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:3mm;white-space:nowrap">
-        <img src="data:image/png;base64,${logo}" style="display:block;width:15mm;height:auto;max-height:10mm">
-        <span>
-          <a href="https://5sens.tn/" style="color:#1b8793;font-weight:700;text-decoration:none">5sens.tn</a>
-          <span style="color:#b08d57"> &nbsp;·&nbsp; </span>+216 26 00 00 88
-          <span style="color:#b08d57"> &nbsp;·&nbsp; </span>+216 22 50 55 01
-        </span>
+        <img src="data:image/png;base64,${logo}" style="display:block;width:12mm;height:auto;max-height:8mm;object-fit:contain">
+        <span style="display:block;width:0;height:8mm;border-left:0.5px solid #b08d57"></span>
+        <a href="https://5sens.tn/" style="color:#147f8a;font-size:7.5pt;font-weight:700;text-decoration:none">5sens.tn</a>
+        <span style="display:block;width:0;height:6mm;border-left:0.5px solid #dce1e8"></span>
+        <span style="color:#74777c;font-size:6pt;letter-spacing:.5px">SOUSSE</span>
+        <span style="color:#353b47;font-weight:600">+216 26 00 00 88</span>
+        <span style="display:block;width:0;height:6mm;border-left:0.5px solid #dce1e8"></span>
+        <span style="color:#74777c;font-size:6pt;letter-spacing:.5px">TUNIS</span>
+        <span style="color:#353b47;font-weight:600">+216 22 50 55 01</span>
       </div>
-      <span style="color:#74777c;font-size:6.5pt;white-space:nowrap"><span class="pageNumber"></span> / <span class="totalPages"></span></span>
+      <span style="box-sizing:border-box;padding:1.2mm 2mm;border-radius:2mm;background:#f3f5f8;color:#596273;font-size:6.5pt;white-space:nowrap"><span class="pageNumber"></span><span style="color:#b08d57"> / </span><span class="totalPages"></span></span>
     </div>`;
     let pdfTimeout: NodeJS.Timeout | undefined;
     try {
