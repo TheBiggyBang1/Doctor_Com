@@ -66,7 +66,17 @@ export async function renderHtmlReportPdf(fragment: string, language: "fr" | "en
     const page = await browser.newPage({ javaScriptEnabled: false });
     await page.setContent(buildReportDocument(fragment, language), { waitUntil: "load", timeout: 15_000 });
     const logo = companyLogoBuffer().toString("base64");
-    const footerTemplate = `<div style="box-sizing:border-box;color:#74777c;font:7pt Arial,sans-serif;padding:0 17mm;width:100%;display:flex;align-items:center;justify-content:space-between"><span style="display:flex;align-items:center;gap:6px"><img src="data:image/png;base64,${logo}" style="width:18mm;height:auto;max-height:12mm"><span>5sens.tn · +216 26 00 00 88 · +216 22 50 55 01</span></span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`;
+    const footerTemplate = `<div style="box-sizing:border-box;width:100%;padding:3mm 17mm 0;border-top:0.5px solid #dce1e8;color:#596273;font:7pt Arial,sans-serif;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:3mm;white-space:nowrap">
+        <img src="data:image/png;base64,${logo}" style="display:block;width:15mm;height:auto;max-height:10mm">
+        <span>
+          <a href="https://5sens.tn/" style="color:#1b8793;font-weight:700;text-decoration:none">5sens.tn</a>
+          <span style="color:#b08d57"> &nbsp;·&nbsp; </span>+216 26 00 00 88
+          <span style="color:#b08d57"> &nbsp;·&nbsp; </span>+216 22 50 55 01
+        </span>
+      </div>
+      <span style="color:#74777c;font-size:6.5pt;white-space:nowrap"><span class="pageNumber"></span> / <span class="totalPages"></span></span>
+    </div>`;
     let pdfTimeout: NodeJS.Timeout | undefined;
     try {
       const pdf = await Promise.race([
