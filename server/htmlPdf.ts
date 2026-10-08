@@ -28,8 +28,8 @@ export function buildReportDocument(fragment: string, language: "fr" | "en") {
     @page { size: A4; }
     * { box-sizing: border-box; }
     body { color: #303743; font: 10pt/1.55 "DejaVu Sans", sans-serif; }
-    .brand { border-bottom: 2px solid #b08d57; color: #1b2a4a; font-size: 9pt; font-weight: 700; letter-spacing: .12em; margin-bottom: 18pt; padding-bottom: 8pt; }
-    h1, h2, h3, h4 { break-after: avoid; color: #1b2a4a; line-height: 1.2; }
+    .brand { border-bottom: 2px solid #00b5cd; color: #4f2c88; font-size: 9pt; font-weight: 700; letter-spacing: .12em; margin-bottom: 18pt; padding-bottom: 8pt; }
+    h1, h2, h3, h4 { break-after: avoid; color: #4f2c88; line-height: 1.2; }
     h1 { font-size: 24pt; margin: 0 0 18pt; }
     h2 { border-bottom: 1px solid #dce1e8; font-size: 16pt; margin: 22pt 0 8pt; padding-bottom: 5pt; }
     h3 { font-size: 12pt; margin: 15pt 0 6pt; }
@@ -37,10 +37,10 @@ export function buildReportDocument(fragment: string, language: "fr" | "en") {
     p { margin: 0 0 8pt; orphans: 3; widows: 3; }
     ul, ol { margin: 4pt 0 10pt; padding-left: 20pt; }
     li { margin: 0 0 4pt; }
-    blockquote { border-left: 3px solid #b08d57; color: #505968; margin: 10pt 0; padding: 4pt 12pt; }
+    blockquote { border-left: 3px solid #00b5cd; color: #505968; margin: 10pt 0; padding: 4pt 12pt; }
     table { border-collapse: collapse; font-size: 8.5pt; margin: 9pt 0 14pt; table-layout: fixed; width: 100%; }
     thead { display: table-header-group; }
-    th { background: #1b2a4a; color: #fff; font-weight: 700; text-align: left; }
+    th { background: #4f2c88; color: #fff; font-weight: 700; text-align: left; }
     th, td { border: 1px solid #dce1e8; overflow-wrap: anywhere; padding: 6pt; vertical-align: top; }
     tbody tr:nth-child(even) { background: #f3f5f8; }
     tr { break-inside: avoid; }
@@ -69,7 +69,7 @@ export async function renderHtmlReportPdf(fragment: string, language: "fr" | "en
     const footerTemplate = `<div style="box-sizing:border-box;width:100%;padding:2.5mm 17mm 0;border-top:0.5px solid #dce1e8;color:#596273;font:7pt Arial,sans-serif;display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:3mm;white-space:nowrap">
         <img src="data:image/png;base64,${logo}" style="display:block;width:12mm;height:auto;max-height:8mm;object-fit:contain">
-        <span style="display:block;width:0;height:8mm;border-left:0.5px solid #b08d57"></span>
+        <span style="display:block;width:0;height:8mm;border-left:0.5px solid #00b5cd"></span>
         <a href="https://5sens.tn/" style="color:#147f8a;font-size:7.5pt;font-weight:700;text-decoration:none">5sens.tn</a>
         <span style="display:block;width:0;height:6mm;border-left:0.5px solid #dce1e8"></span>
         <span style="color:#74777c;font-size:6pt;letter-spacing:.5px">SOUSSE</span>
@@ -78,7 +78,7 @@ export async function renderHtmlReportPdf(fragment: string, language: "fr" | "en
         <span style="color:#74777c;font-size:6pt;letter-spacing:.5px">TUNIS</span>
         <span style="color:#353b47;font-weight:600">+216 22 50 55 01</span>
       </div>
-      <span style="box-sizing:border-box;padding:1.2mm 2mm;border-radius:2mm;background:#f3f5f8;color:#596273;font-size:6.5pt;white-space:nowrap"><span class="pageNumber"></span><span style="color:#b08d57"> / </span><span class="totalPages"></span></span>
+      <span style="box-sizing:border-box;padding:1.2mm 2mm;border-radius:2mm;background:#f3f5f8;color:#4f2c88;font-size:6.5pt;white-space:nowrap"><span class="pageNumber"></span><span style="color:#00b5cd"> / </span><span class="totalPages"></span></span>
     </div>`;
     let pdfTimeout: NodeJS.Timeout | undefined;
     try {

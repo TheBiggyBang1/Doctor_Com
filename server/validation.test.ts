@@ -12,6 +12,7 @@ import {
   verifyEmailCodeProof,
 } from "./emailVerification.js";
 import { createReportJobs } from "./reportJobs.js";
+import { buildLeadAlertEmail } from "./leadAlert.js";
 import { draftPayloadSchema, validateSubmission } from "./validation.js";
 
 const testEmailCodeSecret = "test-email-code-secret-at-least-32-characters-long";
@@ -156,11 +157,25 @@ test("verification email content is branded and localized in French or English",
   assert.match(french.html, /Confirmez votre adresse email/);
   assert.match(french.html, /004281/);
   assert.match(french.html, /10 minutes/);
+  assert.match(french.html, /#00b5cd/i);
+  assert.match(french.html, /#4f2c88/i);
   assert.match(english.subject, /Your verification code/);
   assert.match(english.html, /lang="en"/);
   assert.match(english.html, /Confirm your email address/);
   assert.match(english.html, /004281/);
   assert.match(english.html, /10 minutes/);
+});
+
+test("category A alert email uses the current brand colors", () => {
+  const email = buildLeadAlertEmail({
+    answers: completeAnswers,
+    score: { total: 100, category: "A" },
+    submittedAt: "2026-10-08T12:00:00.000Z",
+  });
+
+  assert.match(email.html, /#00b5cd/i);
+  assert.match(email.html, /#4f2c88/i);
+  assert.doesNotMatch(email.html, /#b08d57/i);
 });
 
 test("accepts a final submission without collecting browser geolocation", () => {

@@ -35,11 +35,11 @@ export function renderPlanPdf(markdown: string): Promise<Buffer> {
     document.on("error", reject);
     document.on("end", () => resolve(Buffer.concat(chunks)));
 
-    document.fillColor("#1B2A4A").font("Helvetica-Bold").fontSize(9).text("5 SENS ADVERTISING");
+    document.fillColor("#4F2C88").font("Helvetica-Bold").fontSize(9).text("5 SENS ADVERTISING");
     document.moveDown(1.2);
-    document.fillColor("#1B2A4A").font("Times-Bold").fontSize(24).text("Plan de communication", { lineGap: 2 });
+    document.fillColor("#4F2C88").font("Times-Bold").fontSize(24).text("Plan de communication", { lineGap: 2 });
     document.moveDown(0.25);
-    document.fillColor("#B08D57").font("Helvetica-Bold").fontSize(8).text("DOCTOR COM  ·  STRATÉGIE PERSONNALISÉE");
+    document.fillColor("#00B5CD").font("Helvetica-Bold").fontSize(8).text("DOCTOR COM  ·  STRATÉGIE PERSONNALISÉE");
     document.moveDown(1.7);
 
     const sourceLines = markdown.split(/\r?\n/);
@@ -69,7 +69,7 @@ export function renderPlanPdf(markdown: string): Promise<Buffer> {
             text: plainMarkdown(row[columnIndex] ?? ""),
             type: isHeader ? "TH" as const : "TD" as const,
             font: { family: isHeader ? "Helvetica-Bold" : "Helvetica", size: 8 },
-            backgroundColor: isHeader ? "#1B2A4A" : rowIndex % 2 === 0 ? "#F3F5F8" : "#FFFFFF",
+            backgroundColor: isHeader ? "#4F2C88" : rowIndex % 2 === 0 ? "#F3F5F8" : "#FFFFFF",
             textColor: isHeader ? "#FFFFFF" : "#353B47",
             borderColor: "#DCE1E8",
             padding: { top: 5, bottom: 5, left: 6, right: 6 },
@@ -91,7 +91,7 @@ export function renderPlanPdf(markdown: string): Promise<Buffer> {
         const level = heading[1].length;
         const size = level === 1 ? 20 : level === 2 ? 15 : 12;
         document.moveDown(level < 3 ? 0.6 : 0.35);
-        document.fillColor(level === 1 ? "#1B2A4A" : "#24365E");
+        document.fillColor("#4F2C88");
         document.font(level <= 2 ? "Times-Bold" : "Helvetica-Bold").fontSize(size).text(plainMarkdown(heading[2]), { paragraphGap: 5 });
         document.moveDown(0.25);
         continue;
