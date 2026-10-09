@@ -40,6 +40,16 @@ Questionnaire bilingue de qualification des prospects, construit avec React/Vite
    Le conteneur construit le frontend et le serveur TypeScript en JavaScript, installe Chromium, puis sert les deux depuis le port `3001`. Les réponses finalisées sont ajoutées à Google Sheets. Les brouillons, vérifications email, limites quotidiennes, et l'état/PDF du rapport restent en mémoire et disparaissent au redémarrage du service. Claude renvoie un fragment HTML sémantique; le serveur l'assainit et le compile en PDF. Garder une seule instance Render active: les sessions et limites en mémoire ne sont pas partagées entre instances.
 3. Placer un reverse proxy HTTPS devant `127.0.0.1:3001`, diriger le domaine vers ce proxy, et autoriser l'accès HTTPS uniquement. Le endpoint de santé `/api/health` confirme que le serveur HTTP répond.
 
+## Application mobile Expo
+
+L'application React Native se trouve dans [`mobile/`](./mobile/). Elle affiche
+le site existant dans une WebView afin de conserver exactement son interface
+mobile et son parcours de questionnaire. Elle possède ses propres dépendances;
+la compilation du site et l'image Docker ne la construisent pas.
+
+Consulter [`mobile/README.md`](./mobile/README.md) pour démarrer le site, puis
+l'application Expo sur un simulateur ou un appareil.
+
 ## Contrôles
 
 ```powershell

@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Doctor Com",
+    "slug": "doctor-com",
+    "scheme": "doctorcom",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fivesens.doctorcom"
+    },
+    "android": {
+      "package": "com.fivesens.doctorcom",
+      "softwareKeyboardLayoutMode": "resize"
+    }
+  }
+}

@@ -9,6 +9,24 @@ export type GoogleSubmissionInput = {
   submittedAt: string;
 };
 
+export function getEmailLookupRange(submissionRange: string) {
+  const separator = submissionRange.lastIndexOf("!");
+  const sheetPrefix = separator === -1 ? "" : submissionRange.slice(0, separator + 1);
+  const gridRange = submissionRange.slice(separator + 1);
+  const startColumn = /^\$?([A-Z]+)/i.exec(gridRange)?.[1]?.toUpperCase() ?? "A";
+  const startColumnIndex = [...startColumn].reduce(
+    (index, character) => index * 26 + character.charCodeAt(0) - 64,
+    0,
+  );
+  let emailColumnIndex = startColumnIndex + 24;
+  let emailColumn = "";
+  while (emailColumnIndex > 0) {
+    emailColumn = String.fromCharCode(((emailColumnIndex - 1) % 26) + 65) + emailColumn;
+    emailColumnIndex = Math.floor((emailColumnIndex - 1) / 26);
+  }
+  return `${sheetPrefix}${emailColumn}:${emailColumn}`;
+}
+
 function toJsonValue(value: unknown) {
   if (Array.isArray(value)) return JSON.stringify(value);
   if (typeof value === "string") return value;
@@ -139,9 +157,10 @@ export async function hasNormalizedEmailInGoogleSheet(email: string) {
     scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
   });
   const sheets = google.sheets({ version: "v4", auth });
+  const submissionRange = process.env.GOOGLE_SHEET_RANGE ?? "A:AI";
   const result = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: "Y:Y",
+    range: getEmailLookupRange(submissionRange),
   });
   return (result.data.values ?? []).some(([storedEmail]) => normalizeEmail(storedEmail) === email);
 }

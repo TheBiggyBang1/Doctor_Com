@@ -199,7 +199,7 @@ export function createApp(
     draft.lastCodeSentAt = now();
     response.cookie(emailCodeCookieName, createEmailCodeProof(secret, email, code, expiresAt), {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: emailCodeLifetimeMs,
       path: "/api/email",
@@ -427,6 +427,88 @@ export function createApp(
     }
     response.setHeader("Cache-Control", "private, no-store");
     response.json({ reportStatus: reportJobs.get(row.id)?.status ?? row.report_status });
+  });
+
+  app.get("/api/questionnaire/report/viewer", (request, response) => {
+    const token = readResumeToken(request);
+    if (!token) {
+      response.status(401).json({ error: "report_not_found" });
+      return;
+    }
+    const record = drafts.get(tokenHash(token));
+    const report = record ? reportJobs.get(record.id) : undefined;
+    if (!record || record.status !== "submitted" || report?.status !== "ready" || !report.pdf) {
+      response.status(record ? 409 : 404).json({ error: record ? "report_not_ready" : "report_not_found" });
+      return;
+    }
+
+    response.setHeader("Cache-Control", "private, no-store");
+    response.type("html").send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=3">
+  <meta name="color-scheme" content="light">
+  <title>Doctor Com report</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 12px; background: #f7f5fb; color: #4f2c88; font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    #status { position: sticky; top: 0; z-index: 1; margin: -12px -12px 12px; padding: 12px; background: #f7f5fb; text-align: center; }
+    #pages { display: grid; justify-items: center; gap: 12px; }
+    canvas { max-width: 100%; height: auto; background: white; box-shadow: 0 2px 12px #24153a22; }
+    #retry { display: none; margin: 8px auto; padding: 12px 18px; border: 0; border-radius: 8px; background: #4f2c88; color: white; font: inherit; }
+  </style>
+</head>
+<body>
+  <div id="status" role="status">Loading your report…</div>
+  <button id="retry" type="button">Try again</button>
+  <main id="pages"></main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    (function() {
+      var status = document.getElementById("status");
+      var pages = document.getElementById("pages");
+      var retry = document.getElementById("retry");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      async function loadReport() {
+        status.textContent = "Loading your report…";
+        retry.style.display = "none";
+        pages.replaceChildren();
+        try {
+          var documentTask = pdfjsLib.getDocument({ url: "/api/questionnaire/report.pdf", withCredentials: true });
+          var pdf = await documentTask.promise;
+          for (var pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+            var page = await pdf.getPage(pageNumber);
+            var baseViewport = page.getViewport({ scale: 1 });
+            var scale = Math.min(1.5, Math.max(0.5, (window.innerWidth - 24) / baseViewport.width));
+            var viewport = page.getViewport({ scale: scale });
+            var canvas = document.createElement("canvas");
+            var ratio = window.devicePixelRatio || 1;
+            canvas.width = Math.floor(viewport.width * ratio);
+            canvas.height = Math.floor(viewport.height * ratio);
+            canvas.style.width = viewport.width + "px";
+            canvas.style.height = viewport.height + "px";
+            pages.appendChild(canvas);
+            var context = canvas.getContext("2d");
+            await page.render({
+              canvasContext: context,
+              viewport: viewport,
+              transform: ratio === 1 ? null : [ratio, 0, 0, ratio, 0, 0]
+            }).promise;
+          }
+          status.textContent = "";
+        } catch (error) {
+          console.error("Report PDF could not be displayed", error);
+          status.textContent = "Your report could not be displayed.";
+          retry.style.display = "block";
+        }
+      }
+      retry.addEventListener("click", loadReport);
+      loadReport();
+    })();
+  </script>
+</body>
+</html>`);
   });
 
   app.get("/api/questionnaire/report.pdf", async (request, response) => {

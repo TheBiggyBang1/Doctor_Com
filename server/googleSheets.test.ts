@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildGoogleSheetRow } from "./googleSheets.js";
+import { buildGoogleSheetRow, getEmailLookupRange } from "./googleSheets.js";
+
+test("email lookup uses the worksheet configured for submission", () => {
+  assert.equal(getEmailLookupRange("A:AI"), "Y:Y");
+  assert.equal(getEmailLookupRange("B:AJ"), "Z:Z");
+  assert.equal(getEmailLookupRange("AA:BD"), "AY:AY");
+  assert.equal(getEmailLookupRange("Responses!A:AI"), "Responses!Y:Y");
+  assert.equal(getEmailLookupRange("'Lead Responses'!A:AI"), "'Lead Responses'!Y:Y");
+});
 
 test("buildGoogleSheetRow includes full form data and scores without browser coordinates", () => {
   const row = buildGoogleSheetRow({

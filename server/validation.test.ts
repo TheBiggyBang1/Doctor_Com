@@ -281,7 +281,8 @@ test("email verification sends a code without returning it and accepts the valid
     assert.ok(!JSON.stringify(sentBody).includes(deliveredCode));
     const codeCookieHeader = sent.headers.get("set-cookie") ?? "";
     assert.match(codeCookieHeader, /HttpOnly/i);
-    assert.match(codeCookieHeader, /Secure/i);
+    if (process.env.NODE_ENV === "production") assert.match(codeCookieHeader, /Secure/i);
+    else assert.doesNotMatch(codeCookieHeader, /Secure/i);
     assert.match(codeCookieHeader, /SameSite=Lax/i);
     const codeCookie = responseCookie(sent);
 
@@ -306,6 +307,40 @@ test("email verification sends a code without returning it and accepts the valid
   assert.match(deliveredCode, /^\d{6}$/);
   assert.equal(deliveredLanguage, "fr");
   assert.equal(leadAlertSent, false);
+});
+
+test("authenticated report viewer renders the generated PDF for mobile WebViews", async () => {
+  let deliveredCode = "";
+  await withApi(async (baseUrl) => {
+    const cookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, cookie);
+    await verifyCode(baseUrl, cookie, responseCookie(sent), deliveredCode);
+
+    const submitted = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 7, answers: completeAnswers }),
+    });
+    assert.equal(submitted.status, 202);
+
+    let viewer: Response | undefined;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      viewer = await fetch(`${baseUrl}/api/questionnaire/report/viewer`, { headers: { cookie } });
+      if (viewer.status !== 409) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+
+    assert.equal(viewer?.status, 200);
+    assert.match(viewer?.headers.get("content-type") ?? "", /text\/html/);
+    const html = await viewer!.text();
+    assert.match(html, /pdf\.js\/3\.11\.174\/pdf\.min\.js/);
+    assert.match(html, /\/api\/questionnaire\/report\.pdf/);
+    assert.match(html, /withCredentials: true/);
+  }, {
+    sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
+    appendSubmission: async () => true,
+    generatePlan: async () => "<h1>Plan</h1>",
+  });
 });
 
 test("sends a category A alert after a successful submission with contact details and timestamp", async () => {
