@@ -284,7 +284,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .pdf-modal { position: fixed; z-index: 30; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom); background: var(--paper); }
 .pdf-modal__header { position: sticky; top: 0; display: flex; min-height: 56px; align-items: center; gap: 16px; border-bottom: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 14px; font-weight: 650; }
 .pdf-modal__back { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: var(--ink); font: inherit; }
-.pdf-modal__viewer { display: block; width: 100%; min-height: 0; border: 0; background: var(--white); }
+.pdf-modal__viewer { display: block; width: 100%; height: 100%;   min-height: 0; border: 0; background: var(--white); }
 .loading-screen { display: flex; min-height: 100vh; align-items: center; justify-content: center; gap: 12px; color: var(--ink); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; }
 .loading-mark { color: var(--brand-purple); font-family: Georgia, "Times New Roman", serif; font-size: 34px; font-weight: 400; }
 
