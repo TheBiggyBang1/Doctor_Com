@@ -65,3 +65,47 @@ working without exposing server credentials in the mobile bundle.
 
 On Android, the app replaces the built-in PDF iframe with an authenticated
 viewer so the report renders in WebView without opening a separate browser.
+
+## Build for device testing or release
+
+The EAS profiles use `https://doctorcomtunis.com` for preview and production
+builds. They are separate from the root website package and lockfile.
+
+1. In a terminal, link this app to your Expo account and EAS project:
+
+   ```cmd
+   cd C:\Users\ASUS\Desktop\DoctorCom\mobile
+   npx eas-cli@latest login
+   npx eas-cli@latest init
+   ```
+
+   `eas init` creates/links the EAS project and writes its project ID into
+   `app.json`. Keep that generated ID in the app configuration.
+
+2. Build an installable Android APK for internal testing:
+
+   ```cmd
+   npx eas-cli@latest build --platform android --profile preview
+   ```
+
+   For an iOS internal build, use `--platform ios --profile preview`; Apple
+   account/device provisioning may be required.
+
+3. Build store-ready binaries:
+
+   ```cmd
+   npx eas-cli@latest build --platform all --profile production
+   ```
+
+   EAS will prompt you to configure signing credentials. Publishing to Google
+   Play or the Apple App Store is a separate submission step and requires the
+   corresponding developer accounts:
+
+   ```cmd
+   npx eas-cli@latest submit --platform android
+   npx eas-cli@latest submit --platform ios
+   ```
+
+The `development` profile is for a development client and does not set a
+production website URL. Test the preview build on physical Android/iOS devices
+before submitting it to either store.

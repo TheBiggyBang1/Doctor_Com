@@ -4,15 +4,32 @@
     "slug": "doctor-com",
     "scheme": "doctorcom",
     "version": "1.0.0",
+    "icon": "./assets/app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f7f5fb"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fivesens.doctorcom"
+      "bundleIdentifier": "com.fivesens.doctorcom",
+      "icon": "./assets/app-icon.png"
     },
     "android": {
       "package": "com.fivesens.doctorcom",
-      "softwareKeyboardLayoutMode": "resize"
-    }
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-icon.png",
+        "backgroundColor": "#f7f5fb"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "52fbd826-89a8-40d4-8d3e-87fb4e1cbdec"
+      }
+    },
+    "owner": "thebiggybang1"
   }
 }
