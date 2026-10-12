@@ -454,8 +454,8 @@ export function createApp(
     * { box-sizing: border-box; }
     body { margin: 0; padding: 12px; background: #f7f5fb; color: #4f2c88; font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     #status { position: sticky; top: 0; z-index: 1; margin: -12px -12px 12px; padding: 12px; background: #f7f5fb; text-align: center; }
-    #pages { display: grid; justify-items: center; gap: 12px; }
-    canvas { max-width: 100%; height: auto; background: white; box-shadow: 0 2px 12px #24153a22; }
+    #pages { display: grid; width: 100%; min-width: 0; justify-items: center; gap: 12px; }
+    canvas { display: block; max-width: 100%; height: auto; background: white; box-shadow: 0 2px 12px #24153a22; }
     #retry { display: none; margin: 8px auto; padding: 12px 18px; border: 0; border-radius: 8px; background: #4f2c88; color: white; font: inherit; }
   </style>
 </head>
@@ -469,40 +469,76 @@ export function createApp(
       var status = document.getElementById("status");
       var pages = document.getElementById("pages");
       var retry = document.getElementById("retry");
+      var pdfDocument = null;
+      var renderVersion = 0;
+      var renderTasks = [];
+      var resizeTimer = 0;
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      async function renderPages(pdf, version) {
+        pages.replaceChildren();
+        renderTasks = [];
+        for (var pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+          if (version !== renderVersion) return;
+          var page = await pdf.getPage(pageNumber);
+          var baseViewport = page.getViewport({ scale: 1 });
+          var scale = Math.min(1.5, pages.clientWidth / baseViewport.width);
+          var viewport = page.getViewport({ scale: scale });
+          var canvas = document.createElement("canvas");
+          var ratio = window.devicePixelRatio || 1;
+          canvas.width = Math.ceil(viewport.width * ratio);
+          canvas.height = Math.ceil(viewport.height * ratio);
+          canvas.style.width = viewport.width + "px";
+          pages.appendChild(canvas);
+          var context = canvas.getContext("2d");
+          if (!context) throw new Error("Canvas rendering is unavailable");
+          var renderTask = page.render({
+            canvasContext: context,
+            viewport: viewport,
+            transform: ratio === 1 ? null : [ratio, 0, 0, ratio, 0, 0]
+          });
+          renderTasks.push(renderTask);
+          await renderTask.promise;
+        }
+      }
+      function showRenderError(error, version) {
+        if (version !== renderVersion) return;
+        console.error("Report PDF could not be displayed", error);
+        status.textContent = "Your report could not be displayed.";
+        retry.style.display = "block";
+      }
       async function loadReport() {
+        var version = ++renderVersion;
+        renderTasks.forEach(function(task) { task.cancel(); });
+        renderTasks = [];
         status.textContent = "Loading your report…";
         retry.style.display = "none";
         pages.replaceChildren();
         try {
-          var documentTask = pdfjsLib.getDocument({ url: "/api/questionnaire/report.pdf", withCredentials: true });
-          var pdf = await documentTask.promise;
-          for (var pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-            var page = await pdf.getPage(pageNumber);
-            var baseViewport = page.getViewport({ scale: 1 });
-            var scale = Math.min(1.5, Math.max(0.5, (window.innerWidth - 24) / baseViewport.width));
-            var viewport = page.getViewport({ scale: scale });
-            var canvas = document.createElement("canvas");
-            var ratio = window.devicePixelRatio || 1;
-            canvas.width = Math.floor(viewport.width * ratio);
-            canvas.height = Math.floor(viewport.height * ratio);
-            canvas.style.width = viewport.width + "px";
-            canvas.style.height = viewport.height + "px";
-            pages.appendChild(canvas);
-            var context = canvas.getContext("2d");
-            await page.render({
-              canvasContext: context,
-              viewport: viewport,
-              transform: ratio === 1 ? null : [ratio, 0, 0, ratio, 0, 0]
-            }).promise;
+          if (!pdfDocument) {
+            var documentTask = pdfjsLib.getDocument({ url: "/api/questionnaire/report.pdf", withCredentials: true });
+            pdfDocument = await documentTask.promise;
           }
+          await renderPages(pdfDocument, version);
+          if (version !== renderVersion) return;
           status.textContent = "";
         } catch (error) {
-          console.error("Report PDF could not be displayed", error);
-          status.textContent = "Your report could not be displayed.";
-          retry.style.display = "block";
+          showRenderError(error, version);
         }
       }
+      window.addEventListener("resize", function() {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(function() {
+          if (!pdfDocument) return;
+          var version = ++renderVersion;
+          renderTasks.forEach(function(task) { task.cancel(); });
+          status.textContent = "Loading your report…";
+          renderPages(pdfDocument, version).then(function() {
+            if (version === renderVersion) status.textContent = "";
+          }).catch(function(error) {
+            showRenderError(error, version);
+          });
+        }, 100);
+      });
       retry.addEventListener("click", loadReport);
       loadReport();
     })();

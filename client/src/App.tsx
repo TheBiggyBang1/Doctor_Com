@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-const companyLogo = new URL("../assets/Logo_doctorcom_powered.png", import.meta.url).href;
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+const companyMark = new URL("../assets/Logo_doctorcom_compact.png", import.meta.url).href;
 import {
   budgetFrequencies,
   clientTypes,
@@ -74,7 +74,11 @@ const messages = {
     title: "Obtenez votre plan de communication personnalisé",
     body: "Répondez à quelques questions sur votre entreprise et vos objectifs. Notre équipe stratégique vous prépare une première feuille de route, adaptée à votre secteur et votre budget.",
     action: "Commencer le diagnostic",
-    note: "Aucune carte bancaire requise · 7 étapes · ~5 minutes",
+    note: "Aucune carte bancaire requise · 6 étapes · ~5 minutes",
+    quickFeature: "Rapide",
+    quickFeatureBody: "Sauvegardé automatiquement",
+    tailoredFeature: "Sur mesure",
+    tailoredFeatureBody: "Adapté à votre secteur et budget",
     company: "Entreprise",
     goals: "Objectifs",
     audience: "Cibles",
@@ -90,6 +94,7 @@ const messages = {
     saveFailed: "Sauvegarde indisponible. Vérifiez votre connexion avant de continuer.",
     startFailed: "Le questionnaire n'a pas pu démarrer. Réessayez dans un instant.",
     back: "Retour",
+    home: "Accueil",
     next: "Continuer",
     submit: "Enregistrer ma demande",
     startTitle: "Un premier aperçu de vos enjeux.",
@@ -141,7 +146,36 @@ const messages = {
     consent: "J'accepte l'utilisation de mes données pour le traitement de ma demande, conformément à la politique de confidentialité.",
     privacyLink: "Consulter la notice de confidentialité",
     privacyTitle: "Notice de confidentialité",
-    privacyBody: "Les informations saisies sont enregistrées par 5 Sens Advertising pour traiter votre demande. La politique complète et la durée de conservation doivent être précisées par l'agence avant la mise en production.",
+    privacySections: [
+      {
+        heading: "1. Responsable du traitement",
+        body: "5 Sens Advertising (« 5 Sens », « nous ») est responsable des données personnelles communiquées au moyen de ce questionnaire. Cette notice décrit les informations collectées, leurs usages et leur durée de conservation.",
+      },
+      {
+        heading: "2. Données concernées",
+        body: "Nous pouvons traiter vos nom et prénom, fonction, adresse email, numéro de téléphone, ainsi que les informations concernant votre entreprise, son secteur, ses objectifs, sa clientèle, ses canaux de communication, son budget et ses délais. Nous conservons également vos choix et consentements ainsi que les informations nécessaires au suivi de votre demande. Ne communiquez pas de données sensibles ou d’informations qui ne sont pas nécessaires à ce diagnostic.",
+      },
+      {
+        heading: "3. Utilisation exclusivement par 5 Sens",
+        body: "Vos données sont utilisées par 5 Sens exclusivement à ses propres fins commerciales : analyser votre demande, préparer et vous transmettre un diagnostic ou un plan de communication, répondre à vos questions et, le cas échéant, vous contacter au sujet des services de 5 Sens en lien avec votre demande. Elles ne sont ni vendues ni louées et ne sont pas utilisées à des fins commerciales ou de prospection pour le compte d’autres entreprises.",
+      },
+      {
+        heading: "4. Prestataires techniques et accès",
+        body: "L’accès est limité aux personnes autorisées chez 5 Sens qui en ont besoin pour traiter votre demande. Des prestataires techniques, notamment d’hébergement, de messagerie, de stockage de réponses ou de génération de rapports, peuvent traiter certaines données uniquement pour fournir leurs services à 5 Sens et selon ses instructions. Ils ne sont pas autorisés à les utiliser pour leur propre prospection commerciale.",
+      },
+      {
+        heading: "5. Durée de conservation et suppression",
+        body: "5 Sens conserve les données recueillies au moyen du questionnaire pendant une durée maximale de six mois à compter de leur transmission. À l’issue de ces six mois, les données sont supprimées de manière définitive. Cette durée s’applique aux coordonnées, réponses, informations de suivi et documents générés associés à la demande.",
+      },
+      {
+        heading: "6. Vos choix et vos droits",
+        body: "La transmission des informations est volontaire, mais les coordonnées et réponses demandées sont nécessaires pour recevoir le diagnostic. Selon la législation applicable à votre situation, vous pouvez demander l’accès à vos données, leur rectification ou leur suppression, limiter ou contester certains traitements, retirer un consentement lorsque le traitement repose sur celui-ci, ou demander la portabilité des données. Pour exercer ces droits ou poser une question, contactez 5 Sens Advertising par les coordonnées publiées sur son site.",
+      },
+      {
+        heading: "7. Sécurité et mises à jour",
+        body: "5 Sens applique des mesures destinées à protéger les données contre l’accès, l’utilisation, la modification ou la divulgation non autorisés. Aucun service de transmission ou de stockage en ligne ne peut toutefois garantir une sécurité absolue. Cette notice peut être mise à jour ; la version affichée au moment de votre demande s’applique à celle-ci.",
+      },
+    ],
     close: "Fermer",
     required: "Ce champ est obligatoire.",
     emailInvalid: "Saisissez une adresse email valide.",
@@ -150,6 +184,7 @@ const messages = {
     emailSendFailed: "Le code n'a pas pu être envoyé. Réessayez dans un instant.",
     codeInvalid: "Le code est incorrect. Vérifiez-le et réessayez.",
     codeExpired: "Ce code a expiré. Demandez-en un nouveau.",
+    verificationMismatch: "L'adresse vérifiée ne correspond plus à celle du formulaire. Vérifiez l'adresse et demandez un nouveau code.",
     tooManyAttempts: "Trop de tentatives. Réessayez plus tard.",
     spreadsheetUnavailable: "La vérification est temporairement indisponible. Réessayez plus tard.",
     verificationRequired: "Vérifiez votre adresse email avant d'envoyer votre demande.",
@@ -178,6 +213,7 @@ const messages = {
     reportRetry: "Réessayer la génération",
     reportReady: "Votre plan personnalisé est prêt.",
     reportOpen: "Ouvrir le PDF",
+    reportBack: "Retour au diagnostic",
     reportLoading: "Génération de votre plan…",
     startAgain: "Commencer un nouveau diagnostic",
     previous: "Précédent",
@@ -190,7 +226,11 @@ const messages = {
     title: "Your next idea deserves the right audience.",
     body: "A few questions to understand your business and shape an initial direction for your communications.",
     action: "Start your diagnostic",
-    note: "No commitment · 7 steps",
+    note: "No commitment · 6 steps · ~5 minutes",
+    quickFeature: "Quick",
+    quickFeatureBody: "Saved automatically",
+    tailoredFeature: "Tailored",
+    tailoredFeatureBody: "Adapted to your industry and budget",
     company: "Company",
     goals: "Objectives",
     audience: "Audience",
@@ -206,6 +246,7 @@ const messages = {
     saveFailed: "Unable to save. Check your connection before continuing.",
     startFailed: "The questionnaire could not start. Please try again.",
     back: "Back",
+    home: "Home",
     next: "Continue",
     submit: "Save my request",
     startTitle: "A first look at your priorities.",
@@ -257,7 +298,36 @@ const messages = {
     consent: "I agree to the use of my data to process my request, in accordance with the privacy notice.",
     privacyLink: "Read the privacy notice",
     privacyTitle: "Privacy notice",
-    privacyBody: "The information you provide is recorded by 5 Sens Advertising to process your request. The full policy and retention period must be confirmed by the agency before production launch.",
+    privacySections: [
+      {
+        heading: "1. Data controller",
+        body: "5 Sens Advertising (“5 Sens”, “we”, or “us”) is responsible for the personal data you provide through this questionnaire. This notice explains what we collect, how we use it, and how long we retain it.",
+      },
+      {
+        heading: "2. Information covered",
+        body: "We may process your name, role, email address, phone number, and information about your business, industry, goals, customers, communication channels, budget, and timing. We also retain your choices and consent and information needed to follow up on your request. Please do not provide sensitive data or information that is unnecessary for this diagnostic.",
+      },
+      {
+        heading: "3. Use solely for 5 Sens’s commercial purposes",
+        body: "5 Sens uses your data solely for its own commercial purposes: to assess your request, prepare and send you a communication diagnostic or plan, answer your questions, and, where relevant, contact you about 5 Sens services related to your request. We do not sell or rent your data, or use it for another business’s commercial or marketing purposes.",
+      },
+      {
+        heading: "4. Service providers and access",
+        body: "Access is limited to authorized 5 Sens personnel who need the information to handle your request. Technical service providers, including hosting, email, response-storage, and report-generation providers, may process some data only to provide services to 5 Sens and under its instructions. They are not authorized to use it for their own marketing.",
+      },
+      {
+        heading: "5. Retention and permanent deletion",
+        body: "5 Sens retains information collected through this questionnaire for no more than six months from the date it is submitted. At the end of that six-month period, the data is permanently deleted. This period applies to the contact details, answers, follow-up information, and generated documents associated with your request.",
+      },
+      {
+        heading: "6. Your choices and rights",
+        body: "Providing information is voluntary, but the requested contact details and answers are needed to receive the diagnostic. Depending on the laws that apply to you, you may ask to access, correct, or delete your data, restrict or object to certain processing, withdraw consent where processing is based on consent, or request data portability. To exercise these rights or ask a question, contact 5 Sens Advertising using the contact details published on its website.",
+      },
+      {
+        heading: "7. Security and updates",
+        body: "5 Sens uses measures designed to protect data against unauthorized access, use, alteration, or disclosure. However, no online transmission or storage service can guarantee absolute security. This notice may be updated; the version displayed when you submit your request applies to that request.",
+      },
+    ],
     close: "Close",
     required: "This field is required.",
     emailInvalid: "Enter a valid email address.",
@@ -266,6 +336,7 @@ const messages = {
     emailSendFailed: "We couldn't send the code. Please try again shortly.",
     codeInvalid: "That code is incorrect. Check it and try again.",
     codeExpired: "That code has expired. Request a new one.",
+    verificationMismatch: "The verified address no longer matches the form. Check the address and request a new code.",
     tooManyAttempts: "Too many attempts. Please try again later.",
     spreadsheetUnavailable: "Verification is temporarily unavailable. Please try again later.",
     verificationRequired: "Verify your email address before submitting your request.",
@@ -294,6 +365,7 @@ const messages = {
     reportRetry: "Retry plan generation",
     reportReady: "Your personalized plan is ready.",
     reportOpen: "Open the PDF",
+    reportBack: "Back to diagnostic",
     reportLoading: "Generating your plan…",
     startAgain: "Start a new diagnostic",
     previous: "Previous",
@@ -303,11 +375,15 @@ const messages = {
   },
 } as const;
 
-type MessageKey = keyof typeof messages.fr;
+type MessageKey = {
+  [Key in keyof typeof messages.fr]: (typeof messages.fr)[Key] extends string ? Key : never;
+}[keyof typeof messages.fr];
 
 const stepLabels: MessageKey[] = ["company", "goals", "audience", "situation", "budget", "contact", "verifyEmail"];
 const stepHeadings: MessageKey[] = ["startTitle", "goalsTitle", "audienceTitle", "situationTitle", "budgetTitle", "contactTitle", "verifyEmailTitle"];
 const stepDescriptions: MessageKey[] = ["startBody", "goalsBody", "audienceBody", "situationBody", "budgetBody", "contactBody", "verifyEmailBody"];
+const questionnaireStepCount = 6;
+const pdfViewerPath = "/api/questionnaire/report/viewer";
 const emailErrorKeys: Record<string, MessageKey> = {
   invalid_email: "emailInvalid",
   disposable_email: "emailDisposable",
@@ -422,6 +498,7 @@ function ChoiceGrid({
 export default function App() {
   const [language, setLanguage] = useState<Language>("fr");
   const [screen, setScreen] = useState<Screen>("landing");
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [reportStatus, setReportStatus] = useState<ReportStatus>("not_started");
   const [answers, setAnswers] = useState<QuestionnaireAnswers>(emptyAnswers);
   const [step, setStep] = useState(1);
@@ -442,6 +519,33 @@ export default function App() {
   const saveRevision = useRef(0);
   const t = messages[language];
 
+  useLayoutEffect(() => {
+    if (screen !== "questionnaire") return;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    const resetScroll = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    resetScroll();
+    window.requestAnimationFrame(resetScroll);
+  }, [screen, step]);
+
+  function writeHistoryState(nextScreen: Screen, nextStep: number, nextPdfOpen = false, replace = false) {
+    const previousDepth = (window.history.state?.doctorCom as { depth?: number } | undefined)?.depth ?? 0;
+    const state = {
+      ...window.history.state,
+      doctorCom: {
+        screen: nextScreen,
+        step: nextStep,
+        pdfOpen: nextPdfOpen,
+        depth: replace ? previousDepth : previousDepth + 1,
+      },
+    };
+    if (replace) window.history.replaceState(state, "", window.location.href);
+    else window.history.pushState(state, "", window.location.href);
+  }
+
   function emailErrorMessage(code: string) {
     return t[emailErrorKeys[code] ?? "emailSendFailed"];
   }
@@ -449,6 +553,71 @@ export default function App() {
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    let focusTimers: number[] = [];
+    const scrollFocusedFieldIntoView = () => {
+      const activeElement = document.activeElement;
+      if (!(activeElement instanceof HTMLElement) || !activeElement.matches("input, select, textarea")) return;
+      const viewport = window.visualViewport;
+      const visibleTop = viewport?.offsetTop ?? 0;
+      let visibleBottom = visibleTop + (viewport?.height ?? window.innerHeight);
+      const footer = document.querySelector<HTMLElement>(".form-footer");
+      if (footer) {
+        const footerTop = footer.getBoundingClientRect().top;
+        if (footerTop > visibleTop && footerTop < visibleBottom) visibleBottom = footerTop;
+      }
+      const bounds = activeElement.getBoundingClientRect();
+      const margin = 24;
+      if (bounds.bottom > visibleBottom - margin) {
+        window.scrollBy({ top: bounds.bottom - visibleBottom + margin, behavior: "auto" });
+      } else if (bounds.top < visibleTop + margin) {
+        window.scrollBy({ top: bounds.top - visibleTop - margin, behavior: "auto" });
+      }
+    };
+    const scheduleFocusedFieldScroll = () => {
+      focusTimers.forEach(window.clearTimeout);
+      focusTimers = [100, 350, 700].map((delay) => window.setTimeout(scrollFocusedFieldIntoView, delay));
+    };
+    const handleFocusIn = (event: FocusEvent) => {
+      if (!(event.target instanceof HTMLElement) || !event.target.matches("input, select, textarea")) return;
+      scheduleFocusedFieldScroll();
+    };
+    const handleViewportResize = () => {
+      window.requestAnimationFrame(scheduleFocusedFieldScroll);
+    };
+    document.addEventListener("focusin", handleFocusIn);
+    window.visualViewport?.addEventListener("resize", handleViewportResize);
+    window.addEventListener("resize", handleViewportResize);
+    return () => {
+      focusTimers.forEach(window.clearTimeout);
+      document.removeEventListener("focusin", handleFocusIn);
+      window.visualViewport?.removeEventListener("resize", handleViewportResize);
+      window.removeEventListener("resize", handleViewportResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!window.history.state?.doctorCom) {
+      writeHistoryState("landing", 1, false, true);
+    }
+    function restoreHistoryState(event: PopStateEvent) {
+      const route = event.state?.doctorCom as { screen?: Screen; step?: number; pdfOpen?: boolean } | undefined;
+      setPdfOpen(route?.pdfOpen === true);
+      if (route?.screen === "questionnaire") {
+        setScreen("questionnaire");
+        setStep(Math.min(7, Math.max(1, route.step ?? 1)));
+      } else if (route?.screen === "report") {
+        setScreen("report");
+      } else {
+        setScreen("landing");
+        setStep(1);
+      }
+      window.scrollTo(0, 0);
+    }
+    window.addEventListener("popstate", restoreHistoryState);
+    return () => window.removeEventListener("popstate", restoreHistoryState);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -465,7 +634,9 @@ export default function App() {
         setHasDraft(result.draft.status === "draft");
         setEmailVerified(result.draft.emailVerified === true);
         setReportStatus(result.draft.reportStatus ?? "pending");
-        setScreen(result.draft.status === "submitted" ? "report" : "questionnaire");
+        const nextScreen = result.draft.status === "submitted" ? "report" : "questionnaire";
+        setScreen(nextScreen);
+        writeHistoryState(nextScreen, result.draft.currentStep, false, nextScreen === "report");
       })
       .catch(() => {
         if (!cancelled) setSaveError(messages.fr.saveFailed);
@@ -589,6 +760,7 @@ export default function App() {
     setPageError("");
     setSaveError("");
     if (hasDraft) {
+      writeHistoryState("questionnaire", step);
       setScreen("questionnaire");
       return;
     }
@@ -607,6 +779,7 @@ export default function App() {
       setLanguage(result.draft.language);
       setStep(Math.min(7, Math.max(1, result.draft.currentStep)));
       setHasDraft(true);
+      writeHistoryState("questionnaire", result.draft.currentStep);
       setScreen("questionnaire");
     } catch {
       setPageError(messages[language].startFailed);
@@ -669,16 +842,20 @@ export default function App() {
   async function moveNext(event: FormEvent) {
     event.preventDefault();
     if (!validateCurrentStep()) return;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setPageError("");
     if (step < 6) {
-      setStep((current) => current + 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      const nextStep = step + 1;
+      writeHistoryState("questionnaire", nextStep);
+      setStep(nextStep);
+      window.scrollTo(0, 0);
       return;
     }
     if (step === 6) {
       if (emailVerified) {
+        writeHistoryState("questionnaire", 7);
         setStep(7);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.scrollTo(0, 0);
         return;
       }
       await sendVerificationCode();
@@ -708,8 +885,9 @@ export default function App() {
       setEmailVerified(false);
       setErrors({});
       setResendSeconds(60);
+      writeHistoryState("questionnaire", 7);
       setStep(7);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo(0, 0);
     } catch {
       setPageError(t.emailSendFailed);
     } finally {
@@ -745,6 +923,14 @@ export default function App() {
       });
       if (!response.ok) {
         const result = await response.json().catch(() => null) as { error?: string; invalidFields?: string[] } | null;
+        if (result?.error === "email_verification_required") {
+          setEmailVerified(false);
+          setStep(6);
+          writeHistoryState("questionnaire", 6);
+          setPageError(t.verificationMismatch);
+          window.scrollTo(0, 0);
+          return;
+        }
         if (Array.isArray(result?.invalidFields)) {
           setErrors(Object.fromEntries(result.invalidFields.map((field: string) => [field, t.required])));
         }
@@ -754,11 +940,12 @@ export default function App() {
 
       const result = await response.json() as { reportStatus: ReportStatus };
       setReportStatus(result.reportStatus ?? "pending");
+      writeHistoryState("report", step);
       setScreen("report");
       setHasDraft(false);
       setEmailVerified(false);
       setSaveError("");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo(0, 0);
     } catch {
       setPageError(t.spreadsheetUnavailable);
     } finally {
@@ -782,13 +969,29 @@ export default function App() {
   }
 
   function moveBack() {
-    if (step > 1) {
-      setStep((current) => current - 1);
-      setErrors({});
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      setScreen("landing");
-    }
+    window.history.back();
+  }
+
+  function goHome() {
+    writeHistoryState("landing", step);
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    setPdfOpen(false);
+    setScreen("landing");
+    window.scrollTo(0, 0);
+  }
+
+  function openPdfViewer() {
+    writeHistoryState("report", step, true);
+    setPdfOpen(true);
+  }
+
+  function startNewQuestionnaire() {
+    writeHistoryState("landing", 1);
+    setPdfOpen(false);
+    setScreen("landing");
+    setHasDraft(false);
+    setAnswers(emptyAnswers());
+    setStep(1);
   }
 
   function choosePrimary(value: string) {
@@ -974,7 +1177,6 @@ export default function App() {
             <Field error={errors["verification.code"]} htmlFor="verification-code" label={t.codeLabel}>
               <input
                 autoComplete="one-time-code"
-                autoFocus
                 id="verification-code"
                 inputMode="numeric"
                 maxLength={6}
@@ -1008,7 +1210,11 @@ export default function App() {
       <main className="landing">
         <header className="topbar">
           <a className="wordmark" href="https://5sens.tn/" aria-label="5 Sens Advertising">
-            <img alt="5 Sens Advertising" className="wordmark__logo" src={companyLogo} />
+            <img alt="" className="wordmark__logo" src={companyMark} />
+            <span className="wordmark__copy">
+              <span className="wordmark__name"><span className="wordmark__doctor">Doctor</span><span className="wordmark__com">Com</span></span>
+              <span className="wordmark__agency">Powered by 5 Sens Advertising</span>
+            </span>
           </a>
           <LanguageSwitch language={language} onChange={selectLanguage} />
         </header>
@@ -1023,7 +1229,16 @@ export default function App() {
             <p className="hero__note">{t.note}</p>
             {pageError && <p className="banner-error" role="alert">{pageError}</p>}
           </div>
-          <div className="hero__stamp" aria-hidden="true"><span>5</span><span>SENS</span><span>ADVERTISING</span></div>
+          <div aria-label={`${t.quickFeature}: ${t.quickFeatureBody}; ${t.tailoredFeature}: ${t.tailoredFeatureBody}`} className="hero__features">
+            <article className="hero__feature">
+              <strong>{t.quickFeature}</strong>
+              <span>{t.quickFeatureBody}</span>
+            </article>
+            <article className="hero__feature">
+              <strong>{t.tailoredFeature}</strong>
+              <span>{t.tailoredFeatureBody}</span>
+            </article>
+          </div>
         </section>
       </main>
     );
@@ -1032,7 +1247,7 @@ export default function App() {
   if (screen === "report") {
     return (
       <main className="app-frame">
-        <AppHeader language={language} onLanguageChange={selectLanguage} />
+        <AppHeader homeLabel={t.home} language={language} onHome={goHome} onLanguageChange={selectLanguage} />
         <section className="report-page">
           <div className={`success-mark${reportStatus === "ready" ? " success-mark--ready" : ""}`} aria-hidden="true">
             {reportStatus === "ready" ? "✓" : <span className="report-spinner" />}
@@ -1044,40 +1259,50 @@ export default function App() {
           </p>
           {(reportStatus === "pending" || reportStatus === "processing") && <p className="report-loading">{t.reportLoading}</p>}
           {reportStatus === "ready" && (
-            <>
-              <a className="primary-button report-open" href="/api/questionnaire/report.pdf" rel="noreferrer" target="_blank">
-                {t.reportOpen}<span aria-hidden="true">↗</span>
-              </a>
-              <iframe className="report-viewer" src="/api/questionnaire/report.pdf" title={t.reportTitle} />
-            </>
+            <button className="primary-button report-open" onClick={openPdfViewer} type="button">
+              {t.reportOpen}<span aria-hidden="true">↗</span>
+            </button>
           )}
           {reportStatus === "failed" && (
             <button className="primary-button" onClick={retryReport} type="button">
               {t.reportRetry}<span aria-hidden="true">↻</span>
             </button>
           )}
-          <button className="text-button" onClick={() => { setScreen("landing"); setHasDraft(false); setAnswers(emptyAnswers()); setStep(1); }} type="button">{t.startAgain} →</button>
+          <button className="text-button" onClick={startNewQuestionnaire} type="button">{t.startAgain} →</button>
         </section>
+        {pdfOpen && (
+          <section aria-label={t.reportTitle} aria-modal="true" className="pdf-modal" role="dialog">
+            <header className="pdf-modal__header">
+              <button className="pdf-modal__back" onClick={() => window.history.back()} type="button">← {t.reportBack}</button>
+              <span>{t.reportTitle}</span>
+            </header>
+            <iframe className="pdf-modal__viewer" src={pdfViewerPath} title={t.reportTitle} />
+          </section>
+        )}
       </main>
     );
   }
 
   return (
     <main className="app-frame">
-      <AppHeader backLabel={t.previous} language={language} onBack={moveBack} onLanguageChange={selectLanguage} />
-      <section className="questionnaire">
+      <AppHeader homeLabel={t.home} language={language} onHome={goHome} onLanguageChange={selectLanguage} />
+      <section className="questionnaire" key={step}>
         <div className="questionnaire__meta">
-          <span className="visually-hidden">{t.step} {step} {t.of} 7</span>
+          <span aria-live="polite" className="progress-label">
+            {t.step} {Math.min(step, questionnaireStepCount)}/{questionnaireStepCount}
+          </span>
           <span className="visually-hidden" role="status" aria-live="polite">
             {saveError ? t.saveFailed : saving ? t.saving : savedAt ? t.saved : t.minutes}
           </span>
         </div>
         <p className="eyebrow mobile-step-eyebrow">0{step} / 07 · {t[stepLabels[step - 1]]}</p>
-        <div className="stepper" aria-label={`${t.step} ${step} ${t.of} 7`}>
-          {stepLabels.map((label, index) => (
-            <div aria-current={step === index + 1 ? "step" : undefined} className={`stepper__item${step === index + 1 ? " stepper__item--active" : ""}${step > index + 1 ? " stepper__item--complete" : ""}`} key={label}>
+        <div className="stepper" aria-label={`${t.step} ${Math.min(step, questionnaireStepCount)} ${t.of} ${questionnaireStepCount}`}>
+          {stepLabels.slice(0, questionnaireStepCount).map((label, index) => (
+            <div aria-current={Math.min(step, questionnaireStepCount) === index + 1 ? "step" : undefined} className={`stepper__item${Math.min(step, questionnaireStepCount) === index + 1 ? " stepper__item--active" : ""}${Math.min(step, questionnaireStepCount) > index + 1 ? " stepper__item--complete" : ""}`} key={label}>
               <span className="stepper__node" aria-hidden="true">{step > index + 1 ? "✓" : index + 1}</span>
-              <span className="stepper__label">{t[label]}</span>
+              {index === Math.min(step, questionnaireStepCount) - 1 && (
+                <span className="stepper__label">{t[label]}</span>
+              )}
               {index < stepLabels.length - 1 && <span className="stepper__line" aria-hidden="true" />}
             </div>
           ))}
@@ -1104,7 +1329,14 @@ export default function App() {
             <button aria-label={t.close} className="modal-close" onClick={() => setPrivacyOpen(false)} type="button">×</button>
             <p className="eyebrow">5 SENS ADVERTISING</p>
             <h2 id="privacy-title">{t.privacyTitle}</h2>
-            <p>{t.privacyBody}</p>
+            <div className="privacy-modal__content">
+              {t.privacySections.map((section) => (
+                <section key={section.heading}>
+                  <h3>{section.heading}</h3>
+                  <p>{section.body}</p>
+                </section>
+              ))}
+            </div>
           </section>
         </div>
       )}
@@ -1127,19 +1359,29 @@ function LanguageSwitch({ language, onChange }: { language: Language; onChange: 
 function AppHeader({
   language,
   onLanguageChange,
-  onBack,
-  backLabel,
+  onHome,
+  homeLabel,
 }: {
   language: Language;
   onLanguageChange: (language: Language) => void;
-  onBack?: () => void;
-  backLabel?: string;
+  onHome?: () => void;
+  homeLabel?: string;
 }) {
   return (
     <header className="topbar app-topbar">
-      {onBack && <button aria-label={backLabel} className="app-topbar__back" onClick={onBack} type="button">←</button>}
+      {onHome && (
+        <button aria-label={homeLabel} className="app-topbar__home" onClick={onHome} type="button">
+          <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 24 24" width="20">
+            <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1V10Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+          </svg>
+        </button>
+      )}
       <a className="wordmark" href="https://5sens.tn/" aria-label="5 Sens Advertising">
-        <img alt="5 Sens Advertising" className="wordmark__logo" src={companyLogo} />
+        <img alt="" className="wordmark__logo" src={companyMark} />
+        <span className="wordmark__copy">
+          <span className="wordmark__name"><span className="wordmark__doctor">Doctor</span><span className="wordmark__com">Com</span></span>
+          <span className="wordmark__agency">Powered by 5 Sens Advertising</span>
+        </span>
       </a>
       <LanguageSwitch language={language} onChange={onLanguageChange} />
     </header>

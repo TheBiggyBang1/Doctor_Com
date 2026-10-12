@@ -309,6 +309,61 @@ test("email verification sends a code without returning it and accepts the valid
   assert.equal(leadAlertSent, false);
 });
 
+test("a leading-zero code verifies the normalized email and survives an unchanged draft save", async () => {
+  const now = 20_000;
+  const email = "First.Last+campaign@googlemail.com";
+  const normalizedEmail = normalizeEmail(email);
+  assert.ok(normalizedEmail);
+  await withApi(async (baseUrl) => {
+    const draftCookie = await createDraftCookie(baseUrl);
+    const answers = {
+      ...completeAnswers,
+      contact: { ...completeAnswers.contact, email },
+    };
+    const saved = await fetch(`${baseUrl}/api/questionnaire/draft`, {
+      method: "PUT",
+      headers: { cookie: draftCookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 7, answers }),
+    });
+    assert.equal(saved.status, 200);
+
+    const proof = createEmailCodeProof(
+      testEmailCodeSecret,
+      normalizedEmail,
+      "004281",
+      now + emailCodeLifetimeMs,
+    );
+    const verified = await verifyCode(
+      baseUrl,
+      draftCookie,
+      `doctor_com_email_code=${proof}`,
+      "004281",
+    );
+    assert.equal(verified.status, 200);
+    assert.deepEqual(await verified.json(), { verified: true });
+
+    const autosaved = await fetch(`${baseUrl}/api/questionnaire/draft`, {
+      method: "PUT",
+      headers: { cookie: draftCookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 7, answers }),
+    });
+    assert.equal(autosaved.status, 200);
+    const restored = await fetch(`${baseUrl}/api/questionnaire/draft`, { headers: { cookie: draftCookie } });
+    assert.equal((await restored.json() as { draft: { emailVerified: boolean } }).draft.emailVerified, true);
+
+    const submitted = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+      method: "POST",
+      headers: { cookie: draftCookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 7, answers }),
+    });
+    assert.equal(submitted.status, 202);
+  }, {
+    now: () => now,
+    appendSubmission: async () => true,
+    generatePlan: async () => "<h1>Plan</h1>",
+  });
+});
+
 test("authenticated report viewer renders the generated PDF for mobile WebViews", async () => {
   let deliveredCode = "";
   await withApi(async (baseUrl) => {
@@ -336,6 +391,9 @@ test("authenticated report viewer renders the generated PDF for mobile WebViews"
     assert.match(html, /pdf\.js\/3\.11\.174\/pdf\.min\.js/);
     assert.match(html, /\/api\/questionnaire\/report\.pdf/);
     assert.match(html, /withCredentials: true/);
+    assert.match(html, /pages\.clientWidth \/ baseViewport\.width/);
+    assert.match(html, /window\.addEventListener\("resize"/);
+    assert.match(html, /canvas \{ display: block; max-width: 100%; height: auto;/);
   }, {
     sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
     appendSubmission: async () => true,

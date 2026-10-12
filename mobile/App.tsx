@@ -20,59 +20,23 @@ const websiteUrl =
     ? "http://10.0.2.2:5173"
     : "http://localhost:5173");
 const websiteOrigin = new URL(websiteUrl).origin;
-const pdfPath = "/api/questionnaire/report.pdf";
-const pdfViewerPath = "/api/questionnaire/report/viewer";
-const androidPdfViewerScript = `(function() {
-  var viewerUrl = ${JSON.stringify(`${websiteOrigin}${pdfViewerPath}`)};
-  function isReportPdf(value) {
-    try { return new URL(value, window.location.href).pathname === ${JSON.stringify(pdfPath)}; }
-    catch (_) { return false; }
-  }
-  function replacePdfFrame(frame) {
-    if (isReportPdf(frame.src)) frame.src = viewerUrl;
-  }
-  function scan(node) {
-    if (node.nodeType !== 1) return;
-    if (node.tagName === "IFRAME") replacePdfFrame(node);
-    node.querySelectorAll("iframe").forEach(replacePdfFrame);
-  }
-  function start() {
-    scan(document.documentElement);
-    new MutationObserver(function(records) {
-      records.forEach(function(record) {
-        if (record.type === "attributes") replacePdfFrame(record.target);
-        else record.addedNodes.forEach(scan);
-      });
-    }).observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["src"]
-    });
-  }
-  if (document.documentElement) start();
-  else document.addEventListener("DOMContentLoaded", start, { once: true });
-  true;
-})();`;
-const mobileSpacingStyles = `
-  @media (max-width: 760px) {
-    .topbar, .app-topbar { min-height: 56px !important; }
-    .hero {
-      min-height: auto !important;
-      align-items: flex-start !important;
-      padding-top: 24px !important;
-      padding-bottom: 32px !important;
+const historyBridgeScript = `(function() {
+  function notifyNative() {
+    var route = window.history.state && window.history.state.doctorCom;
+    var canGoBack = Boolean(route && route.depth > 0);
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(canGoBack ? "doctor-com-can-go-back" : "doctor-com-at-root");
     }
-    .questionnaire { margin-top: 4px !important; }
-    .step-heading { margin-top: 12px !important; margin-bottom: 12px !important; }
   }
-`;
-const mobileSpacingScript = `(function() {
-  var style = document.createElement("style");
-  style.textContent = ${JSON.stringify(mobileSpacingStyles)};
-  var attach = function() { if (document.head) document.head.appendChild(style); };
-  if (document.head) attach();
-  else document.addEventListener("DOMContentLoaded", attach, { once: true });
+  var pushState = window.history.pushState;
+  window.history.pushState = function() {
+    var result = pushState.apply(this, arguments);
+    notifyNative();
+    return result;
+  };
+  window.addEventListener("popstate", notifyNative);
+  document.addEventListener("DOMContentLoaded", notifyNative, { once: true });
+  notifyNative();
   true;
 })();`;
 
@@ -86,7 +50,7 @@ export default function App() {
       "hardwareBackPress",
       () => {
         if (!canGoBack.current) return false;
-        webView.current?.goBack();
+        webView.current?.injectJavaScript("window.history.back();true;");
         return true;
       },
     );
@@ -95,7 +59,7 @@ export default function App() {
   }, []);
 
   function handleNavigationChange(navigation: WebViewNavigation) {
-    canGoBack.current = navigation.canGoBack;
+    if (navigation.canGoBack) canGoBack.current = true;
   }
 
   return (
@@ -104,9 +68,13 @@ export default function App() {
         edges={["top", "right", "bottom", "left"]}
         style={styles.container}
       >
-        <StatusBar backgroundColor="#f7f5fb" barStyle="dark-content" />
+        <StatusBar
+          translucent={Platform.OS === "android"}
+          backgroundColor={Platform.OS === "android" ? "transparent" : "#f7f5fb"}
+          barStyle="dark-content"
+        />
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboard}
         >
           <WebView
@@ -120,12 +88,14 @@ export default function App() {
             thirdPartyCookiesEnabled
             automaticallyAdjustContentInsets={false}
             contentInsetAdjustmentBehavior="never"
-            injectedJavaScriptBeforeContentLoaded={mobileSpacingScript}
-            injectedJavaScript={Platform.OS === "android" ? androidPdfViewerScript : undefined}
+            injectedJavaScriptBeforeContentLoaded={historyBridgeScript}
             startInLoadingState
             onLoadStart={() => setLoadError(null)}
             onError={(event) => setLoadError(event.nativeEvent.description)}
             onNavigationStateChange={handleNavigationChange}
+            onMessage={(event) => {
+              canGoBack.current = event.nativeEvent.data === "doctor-com-can-go-back";
+            }}
             onShouldStartLoadWithRequest={(request) => {
               if (new URL(request.url).origin === websiteOrigin) return true;
               if (/^https?:\/\//i.test(request.url)) {
@@ -134,16 +104,6 @@ export default function App() {
               return false;
             }}
             onOpenWindow={(event) => {
-              const targetUrl = new URL(event.nativeEvent.targetUrl);
-              if (
-                targetUrl.origin === websiteOrigin &&
-                targetUrl.pathname === pdfPath
-              ) {
-                webView.current?.injectJavaScript(
-                  `window.location.href=${JSON.stringify(`${websiteOrigin}${pdfViewerPath}`)};true;`,
-                );
-                return;
-              }
               void Linking.openURL(event.nativeEvent.targetUrl);
             }}
             renderLoading={() => (
