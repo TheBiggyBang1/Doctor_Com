@@ -1295,7 +1295,7 @@ export default function App() {
               {index === Math.min(step, questionnaireStepCount) - 1 && (
                 <span className="stepper__label">{t[label]}</span>
               )}
-              {index < stepLabels.length - 1 && <span className="stepper__line" aria-hidden="true" />}
+              {index < questionnaireStepCount - 1 && <span className="stepper__line" aria-hidden="true" />}
             </div>
           ))}
         </div>
