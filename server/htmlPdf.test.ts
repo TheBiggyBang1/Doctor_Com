@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildReportDocument, renderHtmlReportPdf } from "./htmlPdf.js";
+import { companyLogoBuffer } from "./pdfAssets.js";
 
 test("wraps report HTML in the print template and preserves safe tables and citations", () => {
   const document = buildReportDocument(
@@ -46,4 +47,9 @@ test("compiles the sanitized report to a PDF with Chromium", async () => {
   assert.equal(pdf.subarray(0, 5).toString("ascii"), "%PDF-");
   assert.ok(pdf.byteLength > 1000);
   assert.equal([...pdf.toString("latin1").matchAll(/\/Type\s*\/Page\b/g)].length, 1);
+});
+
+test("loads a logo asset available in the production client build", () => {
+  const logo = companyLogoBuffer();
+  assert.equal(logo.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
 });
