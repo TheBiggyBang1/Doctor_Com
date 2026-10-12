@@ -1230,16 +1230,7 @@ export default function App() {
             <p className="hero__note">{t.note}</p>
             {pageError && <p className="banner-error" role="alert">{pageError}</p>}
           </div>
-          <div aria-label={`${t.quickFeature}: ${t.quickFeatureBody}; ${t.tailoredFeature}: ${t.tailoredFeatureBody}`} className="hero__features">
-            <article className="hero__feature">
-              <strong>{t.quickFeature}</strong>
-              <span>{t.quickFeatureBody}</span>
-            </article>
-            <article className="hero__feature">
-              <strong>{t.tailoredFeature}</strong>
-              <span>{t.tailoredFeatureBody}</span>
-            </article>
-          </div>
+          
         </section>
       </main>
     );
