@@ -13,6 +13,27 @@ test("report job keeps its status and PDF in memory", async () => {
   assert.deepEqual(jobs.get(7), { status: "ready", pdf: Buffer.from("%PDF-test") });
 });
 
+test("report job produces a PDF from the fallback when the AI key is missing", async () => {
+  const previousKey = process.env.ANTHROPIC_API_KEY;
+  const originalWarn = console.warn;
+  delete process.env.ANTHROPIC_API_KEY;
+  console.warn = () => undefined;
+  try {
+    const jobs = createReportJobs();
+    const succeeded = await jobs.run(9, {} as QuestionnaireAnswers, "C", "en");
+    const report = jobs.get(9);
+
+    assert.equal(succeeded, true);
+    assert.equal(report?.status, "ready");
+    assert.ok(report?.pdf);
+    assert.equal(report.pdf.subarray(0, 5).toString("ascii"), "%PDF-");
+  } finally {
+    console.warn = originalWarn;
+    if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousKey;
+  }
+});
+
 test("daily report reservations release failed writes and reset at UTC midnight", () => {
   const previousCap = process.env.DAILY_REPORT_CAP;
   process.env.DAILY_REPORT_CAP = "1";

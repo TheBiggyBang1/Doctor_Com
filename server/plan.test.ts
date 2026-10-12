@@ -58,6 +58,60 @@ test("questionnaire text cannot escape the untrusted-data prompt boundary", () =
   assert.match(prompt, /\\u003c\/questionnaire_data>/);
 });
 
+test("generates a tailored bilingual-safe fallback report when the AI key is missing", async () => {
+  const previousKey = process.env.ANTHROPIC_API_KEY;
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  delete process.env.ANTHROPIC_API_KEY;
+  console.warn = (message: string) => warnings.push(message);
+  try {
+    const plan = await generateCommunicationPlan({
+      ...privateData,
+      company: { ...privateData.company, name: "<Studio Exemple>" },
+    }, "B", "fr");
+
+    assert.match(plan, /<h1>Diagnostic de communication<\/h1>/);
+    assert.match(plan, /&lt;Studio Exemple&gt;/);
+    assert.match(plan, /<h2>5\. Pistes de canaux<\/h2>/);
+    assert.doesNotMatch(plan, /amira\.private@example\.com|budget|TND|high/i);
+    assert.match(warnings[0], /using the questionnaire-based report template/);
+  } finally {
+    console.warn = originalWarn;
+    if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousKey;
+  }
+});
+
+test("uses the fallback report when the AI provider returns an error", async () => {
+  const server = createServer((_request, response) => {
+    response.writeHead(503, { "content-type": "application/json" });
+    response.end(JSON.stringify({ type: "error", error: { type: "overloaded_error", message: "Unavailable" } }));
+  });
+  server.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address() as AddressInfo;
+  const previousKey = process.env.ANTHROPIC_API_KEY;
+  const previousBaseUrl = process.env.ANTHROPIC_BASE_URL;
+  const originalWarn = console.warn;
+  process.env.ANTHROPIC_API_KEY = "local-test-key";
+  process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${address.port}`;
+  console.warn = () => undefined;
+
+  try {
+    const plan = await generateCommunicationPlan(privateData, "C", "en");
+    assert.match(plan, /<h1>Communication diagnostic<\/h1>/);
+    assert.match(plan, /<h2>6\. Next steps<\/h2>/);
+    assert.doesNotMatch(plan, /<h2>.*rollout/i);
+  } finally {
+    console.warn = originalWarn;
+    if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousKey;
+    if (previousBaseUrl === undefined) delete process.env.ANTHROPIC_BASE_URL;
+    else process.env.ANTHROPIC_BASE_URL = previousBaseUrl;
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
 test("Anthropic SDK sends the tiered prompt and returns plan text", async () => {
   let receivedBody: Record<string, unknown> | undefined;
   let receivedApiKey = "";
