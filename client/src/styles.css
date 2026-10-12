@@ -292,6 +292,34 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @keyframes breathe { to { opacity: 0.35; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+@media (min-width: 761px) {
+  .landing { padding: 82px clamp(24px, 5vw, 64px) 0; }
+  .landing > .topbar, .app-frame > .app-topbar {
+    position: fixed;
+    inset: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 clamp(24px, 5vw, 64px);
+    box-shadow: 0 1px 0 var(--line);
+  }
+  .landing .hero { min-height: min(690px, calc(100vh - 165px)); }
+  .app-frame { padding: 82px clamp(24px, 5vw, 64px) 120px; }
+  .step-form { padding-bottom: 88px; animation: none; }
+  .form-footer {
+    position: fixed;
+    z-index: 15;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+    padding: 12px max(24px, calc((100vw - 1152px) / 2)) max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+    box-shadow: 0 -6px 18px rgba(22, 35, 62, 0.05);
+  }
+}
+
 @media (max-width: 760px) {
   .landing { display: flex; min-height: 100svh; flex-direction: column; padding: 0 16px; }
   .topbar { min-height: 64px; }

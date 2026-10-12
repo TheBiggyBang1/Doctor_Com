@@ -180,7 +180,6 @@ const messages = {
     required: "Ce champ est obligatoire.",
     emailInvalid: "Saisissez une adresse email valide.",
     emailDisposable: "Utilisez une adresse email non temporaire.",
-    emailAlreadyUsed: "Cette adresse email a déjà été utilisée pour une demande.",
     emailSendFailed: "Le code n'a pas pu être envoyé. Réessayez dans un instant.",
     codeInvalid: "Le code est incorrect. Vérifiez-le et réessayez.",
     codeExpired: "Ce code a expiré. Demandez-en un nouveau.",
@@ -332,7 +331,6 @@ const messages = {
     required: "This field is required.",
     emailInvalid: "Enter a valid email address.",
     emailDisposable: "Please use a non-disposable email address.",
-    emailAlreadyUsed: "This email address has already been used for a request.",
     emailSendFailed: "We couldn't send the code. Please try again shortly.",
     codeInvalid: "That code is incorrect. Check it and try again.",
     codeExpired: "That code has expired. Request a new one.",
@@ -387,7 +385,6 @@ const pdfViewerPath = "/api/questionnaire/report/viewer";
 const emailErrorKeys: Record<string, MessageKey> = {
   invalid_email: "emailInvalid",
   disposable_email: "emailDisposable",
-  email_already_used: "emailAlreadyUsed",
   email_send_failed: "emailSendFailed",
   verification_unavailable: "emailSendFailed",
   invalid_code: "codeInvalid",
@@ -500,6 +497,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("landing");
   const [pdfOpen, setPdfOpen] = useState(false);
   const [reportStatus, setReportStatus] = useState<ReportStatus>("not_started");
+  const [reportPollRevision, setReportPollRevision] = useState(0);
   const [answers, setAnswers] = useState<QuestionnaireAnswers>(emptyAnswers);
   const [step, setStep] = useState(1);
   const [hasDraft, setHasDraft] = useState(false);
@@ -706,7 +704,7 @@ export default function App() {
       stopped = true;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [screen]);
+  }, [reportPollRevision, screen]);
 
   useEffect(() => {
     if (screen !== "questionnaire" || step !== 7 || resendSeconds <= 0) return;
@@ -963,6 +961,9 @@ export default function App() {
       if (!response.ok) throw new Error("report-retry");
       const result = await response.json() as { reportStatus: ReportStatus };
       setReportStatus(result.reportStatus);
+      if (result.reportStatus === "pending" || result.reportStatus === "processing") {
+        setReportPollRevision((revision) => revision + 1);
+      }
     } catch {
       setReportStatus("failed");
     }

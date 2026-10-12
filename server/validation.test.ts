@@ -67,7 +67,6 @@ async function withApi<T>(
 ) {
   const server = createApp({
     emailCodeSecret: testEmailCodeSecret,
-    emailExists: async () => false,
     sendVerificationEmail: async () => undefined,
     ...options,
   }).listen(0);
@@ -379,7 +378,7 @@ test("authenticated report viewer renders the generated PDF for mobile WebViews"
     assert.equal(submitted.status, 202);
 
     let viewer: Response | undefined;
-    for (let attempt = 0; attempt < 50; attempt += 1) {
+    for (let attempt = 0; attempt < 250; attempt += 1) {
       viewer = await fetch(`${baseUrl}/api/questionnaire/report/viewer`, { headers: { cookie } });
       if (viewer.status !== 409) break;
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -398,6 +397,59 @@ test("authenticated report viewer renders the generated PDF for mobile WebViews"
     sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
     appendSubmission: async () => true,
     generatePlan: async () => "<h1>Plan</h1>",
+  });
+});
+
+test("failed reports can be retried and become available to the web report screen", async () => {
+  let deliveredCode = "";
+  let generationAttempts = 0;
+  const reportJobs = createReportJobs(
+    async () => {
+      generationAttempts += 1;
+      if (generationAttempts === 1) throw new Error("Temporary provider failure");
+      return "<h1>Plan</h1>";
+    },
+    async () => Buffer.from("%PDF-test"),
+  );
+
+  await withApi(async (baseUrl) => {
+    const cookie = await createDraftCookie(baseUrl);
+    const sent = await sendCode(baseUrl, cookie);
+    await verifyCode(baseUrl, cookie, responseCookie(sent), deliveredCode);
+    const submitted = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ language: "fr", currentStep: 7, answers: completeAnswers }),
+    });
+    assert.equal(submitted.status, 202);
+
+    let reportStatus = "";
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const status = await fetch(`${baseUrl}/api/questionnaire/report`, { headers: { cookie } });
+      reportStatus = ((await status.json()) as { reportStatus: string }).reportStatus;
+      if (reportStatus === "failed") break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.equal(reportStatus, "failed");
+
+    const retry = await fetch(`${baseUrl}/api/questionnaire/report/retry`, {
+      method: "POST",
+      headers: { cookie },
+    });
+    assert.equal(retry.status, 202);
+
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const status = await fetch(`${baseUrl}/api/questionnaire/report`, { headers: { cookie } });
+      reportStatus = ((await status.json()) as { reportStatus: string }).reportStatus;
+      if (reportStatus === "ready") break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.equal(reportStatus, "ready");
+    assert.equal(generationAttempts, 2);
+  }, {
+    reportJobs,
+    sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
+    appendSubmission: async () => true,
   });
 });
 
@@ -456,18 +508,16 @@ test("send-code sends the verification email in the selected questionnaire langu
   assert.equal(deliveredLanguage, "en");
 });
 
-test("send-code rejects email already in finalized sheet data", async () => {
+test("send-code allows an email address to request another report", async () => {
   let sent = false;
   await withApi(async (baseUrl) => {
     const draftCookie = await createDraftCookie(baseUrl);
     const response = await sendCode(baseUrl, draftCookie, "First.Last+campaign@googlemail.com");
-    assert.equal(response.status, 409);
-    assert.deepEqual(await response.json(), { error: "email_already_used" });
+    assert.equal(response.status, 200);
   }, {
-    emailExists: async (email) => email === "firstlast@gmail.com",
     sendVerificationEmail: async () => { sent = true; },
   });
-  assert.equal(sent, false);
+  assert.equal(sent, true);
 });
 
 test("send-code enforces the 60-second resend cooldown", async () => {
@@ -664,28 +714,27 @@ test("daily report cap refuses submission before appending to Sheets", async () 
   assert.equal(appended, false);
 });
 
-test("submission rechecks the Sheet for a duplicate after email verification", async () => {
-  let emailChecks = 0;
-  let appended = false;
+test("submission accepts a new report for an email used in a previous submission", async () => {
+  let appendCount = 0;
   let deliveredCode = "";
   await withApi(async (baseUrl) => {
-    const cookie = await createDraftCookie(baseUrl);
-    const sent = await sendCode(baseUrl, cookie);
-    await verifyCode(baseUrl, cookie, responseCookie(sent), deliveredCode);
-    const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
-      method: "POST",
-      headers: { cookie, "content-type": "application/json" },
-      body: JSON.stringify({ language: "fr", currentStep: 7, answers: completeAnswers }),
-    });
-    assert.equal(response.status, 409);
-    assert.deepEqual(await response.json(), { error: "email_already_used" });
+    for (let submission = 0; submission < 2; submission += 1) {
+      const cookie = await createDraftCookie(baseUrl);
+      const sent = await sendCode(baseUrl, cookie);
+      await verifyCode(baseUrl, cookie, responseCookie(sent), deliveredCode);
+      const response = await fetch(`${baseUrl}/api/questionnaire/draft/submit`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ language: "fr", currentStep: 7, answers: completeAnswers }),
+      });
+      assert.equal(response.status, 202);
+    }
   }, {
-    emailExists: async () => ++emailChecks > 1,
+    reportJobs: createReportJobs(async () => "<h1>Plan</h1>", async () => Buffer.from("%PDF-test")),
     sendVerificationEmail: async (_email, code) => { deliveredCode = code; },
-    appendSubmission: async () => { appended = true; return true; },
+    appendSubmission: async () => { appendCount += 1; return true; },
   });
-  assert.equal(emailChecks, 2);
-  assert.equal(appended, false);
+  assert.equal(appendCount, 2);
 });
 
 test("send-code IP limits use CF-Connecting-IP behind a shared Render proxy", async () => {

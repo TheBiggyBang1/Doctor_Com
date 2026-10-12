@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { isIP } from "node:net";
 import express, { type Request, type Response } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
-import { appendSubmissionToGoogleSheet, hasNormalizedEmailInGoogleSheet } from "./googleSheets.js";
+import { appendSubmissionToGoogleSheet } from "./googleSheets.js";
 import {
   createEmailCodeProof,
   emailCodeLifetimeMs,
@@ -90,7 +90,6 @@ export function createApp(
     reportJobs?: ReturnType<typeof createReportJobs>;
     generatePlan?: PlanGenerator;
     appendSubmission?: typeof appendSubmissionToGoogleSheet;
-    emailExists?: typeof hasNormalizedEmailInGoogleSheet;
     sendVerificationEmail?: typeof sendEmailVerificationCode;
     sendLeadAlert?: typeof sendCategoryALeadAlert;
     emailCodeSecret?: string;
@@ -100,7 +99,6 @@ export function createApp(
   const app = express();
   const reportJobs = options.reportJobs ?? createReportJobs(options.generatePlan);
   const appendSubmission = options.appendSubmission ?? appendSubmissionToGoogleSheet;
-  const emailExists = options.emailExists ?? hasNormalizedEmailInGoogleSheet;
   const sendVerificationEmail = options.sendVerificationEmail ?? sendEmailVerificationCode;
   const sendLeadAlert = options.sendLeadAlert ?? sendCategoryALeadAlert;
   const emailCodeSecret = options.emailCodeSecret ?? process.env.EMAIL_CODE_SECRET;
@@ -172,16 +170,6 @@ export function createApp(
     const secret = emailCodeSecret;
     if (!secret || Buffer.byteLength(secret) < 32) {
       response.status(503).json({ error: "verification_unavailable" });
-      return;
-    }
-
-    try {
-      if (await emailExists(email)) {
-        response.status(409).json({ error: "email_already_used" });
-        return;
-      }
-    } catch {
-      response.status(503).json({ error: "spreadsheet_unavailable" });
       return;
     }
 
@@ -361,10 +349,6 @@ export function createApp(
       const score = calculateLeadScore(validation.data);
       let reservedReportDay: string | null = null;
       try {
-        if (await emailExists(draft.verifiedEmail)) {
-          response.status(409).json({ error: "email_already_used" });
-          return;
-        }
         reservedReportDay = reportJobs.reserveDailySlot();
         if (!reservedReportDay) {
           response.status(429).json({ error: "daily_report_cap" });
