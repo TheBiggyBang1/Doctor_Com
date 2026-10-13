@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 const companyMark = new URL("../assets/Logo_doctorcom_compact.png", import.meta.url).href;
+import PrivacyPolicy from "./PrivacyPolicy";
 import {
   budgetFrequencies,
   clientTypes,
@@ -145,38 +146,6 @@ const messages = {
     phone: "Téléphone",
     consent: "J'accepte l'utilisation de mes données pour le traitement de ma demande, conformément à la politique de confidentialité.",
     privacyLink: "Consulter la notice de confidentialité",
-    privacyTitle: "Notice de confidentialité",
-    privacySections: [
-      {
-        heading: "1. Responsable du traitement",
-        body: "5 Sens Advertising (« 5 Sens », « nous ») est responsable des données personnelles communiquées au moyen de ce questionnaire. Cette notice décrit les informations collectées, leurs usages et leur durée de conservation.",
-      },
-      {
-        heading: "2. Données concernées",
-        body: "Nous pouvons traiter vos nom et prénom, fonction, adresse email, numéro de téléphone, ainsi que les informations concernant votre entreprise, son secteur, ses objectifs, sa clientèle, ses canaux de communication, son budget et ses délais. Nous conservons également vos choix et consentements ainsi que les informations nécessaires au suivi de votre demande. Ne communiquez pas de données sensibles ou d’informations qui ne sont pas nécessaires à ce diagnostic.",
-      },
-      {
-        heading: "3. Utilisation exclusivement par 5 Sens",
-        body: "Vos données sont utilisées par 5 Sens exclusivement à ses propres fins commerciales : analyser votre demande, préparer et vous transmettre un diagnostic ou un plan de communication, répondre à vos questions et, le cas échéant, vous contacter au sujet des services de 5 Sens en lien avec votre demande. Elles ne sont ni vendues ni louées et ne sont pas utilisées à des fins commerciales ou de prospection pour le compte d’autres entreprises.",
-      },
-      {
-        heading: "4. Prestataires techniques et accès",
-        body: "L’accès est limité aux personnes autorisées chez 5 Sens qui en ont besoin pour traiter votre demande. Des prestataires techniques, notamment d’hébergement, de messagerie, de stockage de réponses ou de génération de rapports, peuvent traiter certaines données uniquement pour fournir leurs services à 5 Sens et selon ses instructions. Ils ne sont pas autorisés à les utiliser pour leur propre prospection commerciale.",
-      },
-      {
-        heading: "5. Durée de conservation et suppression",
-        body: "5 Sens conserve les données recueillies au moyen du questionnaire pendant une durée maximale de six mois à compter de leur transmission. À l’issue de ces six mois, les données sont supprimées de manière définitive. Cette durée s’applique aux coordonnées, réponses, informations de suivi et documents générés associés à la demande.",
-      },
-      {
-        heading: "6. Vos choix et vos droits",
-        body: "La transmission des informations est volontaire, mais les coordonnées et réponses demandées sont nécessaires pour recevoir le diagnostic. Selon la législation applicable à votre situation, vous pouvez demander l’accès à vos données, leur rectification ou leur suppression, limiter ou contester certains traitements, retirer un consentement lorsque le traitement repose sur celui-ci, ou demander la portabilité des données. Pour exercer ces droits ou poser une question, contactez 5 Sens Advertising par les coordonnées publiées sur son site.",
-      },
-      {
-        heading: "7. Sécurité et mises à jour",
-        body: "5 Sens applique des mesures destinées à protéger les données contre l’accès, l’utilisation, la modification ou la divulgation non autorisés. Aucun service de transmission ou de stockage en ligne ne peut toutefois garantir une sécurité absolue. Cette notice peut être mise à jour ; la version affichée au moment de votre demande s’applique à celle-ci.",
-      },
-    ],
-    close: "Fermer",
     required: "Ce champ est obligatoire.",
     emailInvalid: "Saisissez une adresse email valide.",
     emailDisposable: "Utilisez une adresse email non temporaire.",
@@ -296,38 +265,6 @@ const messages = {
     phone: "Phone number",
     consent: "I agree to the use of my data to process my request, in accordance with the privacy notice.",
     privacyLink: "Read the privacy notice",
-    privacyTitle: "Privacy notice",
-    privacySections: [
-      {
-        heading: "1. Data controller",
-        body: "5 Sens Advertising (“5 Sens”, “we”, or “us”) is responsible for the personal data you provide through this questionnaire. This notice explains what we collect, how we use it, and how long we retain it.",
-      },
-      {
-        heading: "2. Information covered",
-        body: "We may process your name, role, email address, phone number, and information about your business, industry, goals, customers, communication channels, budget, and timing. We also retain your choices and consent and information needed to follow up on your request. Please do not provide sensitive data or information that is unnecessary for this diagnostic.",
-      },
-      {
-        heading: "3. Use solely for 5 Sens’s commercial purposes",
-        body: "5 Sens uses your data solely for its own commercial purposes: to assess your request, prepare and send you a communication diagnostic or plan, answer your questions, and, where relevant, contact you about 5 Sens services related to your request. We do not sell or rent your data, or use it for another business’s commercial or marketing purposes.",
-      },
-      {
-        heading: "4. Service providers and access",
-        body: "Access is limited to authorized 5 Sens personnel who need the information to handle your request. Technical service providers, including hosting, email, response-storage, and report-generation providers, may process some data only to provide services to 5 Sens and under its instructions. They are not authorized to use it for their own marketing.",
-      },
-      {
-        heading: "5. Retention and permanent deletion",
-        body: "5 Sens retains information collected through this questionnaire for no more than six months from the date it is submitted. At the end of that six-month period, the data is permanently deleted. This period applies to the contact details, answers, follow-up information, and generated documents associated with your request.",
-      },
-      {
-        heading: "6. Your choices and rights",
-        body: "Providing information is voluntary, but the requested contact details and answers are needed to receive the diagnostic. Depending on the laws that apply to you, you may ask to access, correct, or delete your data, restrict or object to certain processing, withdraw consent where processing is based on consent, or request data portability. To exercise these rights or ask a question, contact 5 Sens Advertising using the contact details published on its website.",
-      },
-      {
-        heading: "7. Security and updates",
-        body: "5 Sens uses measures designed to protect data against unauthorized access, use, alteration, or disclosure. However, no online transmission or storage service can guarantee absolute security. This notice may be updated; the version displayed when you submit your request applies to that request.",
-      },
-    ],
-    close: "Close",
     required: "This field is required.",
     emailInvalid: "Enter a valid email address.",
     emailDisposable: "Please use a non-disposable email address.",
@@ -493,6 +430,12 @@ function ChoiceGrid({
 }
 
 export default function App() {
+  return window.location.pathname.replace(/\/+$/, "") === "/privacy-policy"
+    ? <PrivacyPolicy />
+    : <QuestionnaireApp />;
+}
+
+function QuestionnaireApp() {
   const [language, setLanguage] = useState<Language>("fr");
   const [screen, setScreen] = useState<Screen>("landing");
   const [pdfOpen, setPdfOpen] = useState(false);
@@ -512,7 +455,6 @@ export default function App() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingSubmission, setVerifyingSubmission] = useState(false);
-  const [privacyOpen, setPrivacyOpen] = useState(false);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const saveRevision = useRef(0);
   const t = messages[language];
@@ -1165,7 +1107,7 @@ export default function App() {
             <span>{t.consent}</span>
           </label>
           {errors["contact.consent"] && <span className="field__error" role="alert">{errors["contact.consent"]}</span>}
-          <button className="privacy-link" onClick={() => setPrivacyOpen(true)} type="button">{t.privacyLink}</button>
+          <a className="privacy-link" href="/privacy-policy">{t.privacyLink}</a>
         </div>
       </div>
     );
@@ -1315,23 +1257,6 @@ export default function App() {
           </footer>
         </form>
       </section>
-      {privacyOpen && (
-        <div className="modal-backdrop" onClick={() => setPrivacyOpen(false)} role="presentation">
-          <section aria-labelledby="privacy-title" aria-modal="true" className="privacy-modal" onClick={(event) => event.stopPropagation()} role="dialog">
-            <button aria-label={t.close} className="modal-close" onClick={() => setPrivacyOpen(false)} type="button">×</button>
-            <p className="eyebrow">5 SENS ADVERTISING</p>
-            <h2 id="privacy-title">{t.privacyTitle}</h2>
-            <div className="privacy-modal__content">
-              {t.privacySections.map((section) => (
-                <section key={section.heading}>
-                  <h3>{section.heading}</h3>
-                  <p>{section.body}</p>
-                </section>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
     </main>
   );
 }

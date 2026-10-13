@@ -250,7 +250,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .consent-check { display: flex; align-items: flex-start; gap: 11px; color: #50545c; font-size: 13px; line-height: 1.55; cursor: pointer; }
 .consent-check input { width: 17px; height: 17px; flex: 0 0 17px; margin: 1px 0 0; accent-color: var(--ink); }
 .privacy-link, .text-button { min-height: 44px; padding: 8px 0; border: 0; background: none; color: var(--ink); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
-.privacy-link { margin: 12px 0 0 28px; }
+.privacy-link { display: inline-flex; align-items: center; margin: 12px 0 0 28px; }
 .form-footer { position: sticky; z-index: 5; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; padding: 12px 0 max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--paper); }
 .back-button { min-width: 44px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: #686d76; font-size: 13px; }
 .back-button:hover { color: var(--ink); }
@@ -281,6 +281,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .privacy-modal__content h3 { margin: 0; color: var(--ink); font-size: 14px; font-weight: 700; line-height: 1.45; }
 .privacy-modal__content p { margin: 5px 0 0; }
 .modal-close { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; border: 0; background: transparent; color: var(--muted); font-size: 25px; }
+.privacy-policy { min-height: 100vh; padding: 0 clamp(20px, 5vw, 64px) 64px; color: #50545c; }
+.privacy-policy__header { display: flex; max-width: 920px; min-height: 72px; align-items: center; justify-content: space-between; margin: 0 auto; border-bottom: 1px solid var(--line); }
+.privacy-policy__header a, .privacy-policy__footer a { color: var(--ink); font-size: 13px; text-underline-offset: 3px; }
+.privacy-policy__languages { display: flex; gap: 4px; }
+.privacy-policy__languages button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--muted); font-size: 12px; }
+.privacy-policy__languages button[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.privacy-policy__article { max-width: 760px; margin: 54px auto 0; }
+.privacy-policy__eyebrow { margin: 0 0 14px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; }
+.privacy-policy__article h1 { margin: 0; color: var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 6vw, 48px); font-weight: 400; line-height: 1.1; }
+.privacy-policy__updated { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+.privacy-policy__intro { margin: 26px 0 36px; font-size: 16px; line-height: 1.8; }
+.privacy-policy__section { margin-top: 30px; }
+.privacy-policy__section h2 { margin: 0 0 10px; color: var(--ink); font-size: 17px; line-height: 1.4; }
+.privacy-policy__section p { margin: 9px 0 0; font-size: 14px; line-height: 1.8; }
+.privacy-policy__section a { color: var(--ink); text-underline-offset: 3px; }
+.privacy-policy__footer { margin-top: 42px; padding-top: 20px; border-top: 1px solid var(--line); }
 .pdf-modal { position: fixed; z-index: 30; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom); background: var(--paper); }
 .pdf-modal__header { position: sticky; top: 0; display: flex; min-height: 56px; align-items: center; gap: 16px; border-bottom: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 14px; font-weight: 650; }
 .pdf-modal__back { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: var(--ink); font: inherit; }
@@ -395,6 +411,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .choice-grid, .choice-grid--3, .choice-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-footer { margin-right: -16px; margin-left: -16px; padding-right: 16px; padding-left: 16px; }
   .privacy-modal { padding: 32px 24px; }
+  .privacy-policy { padding-right: 20px; padding-left: 20px; }
+  .privacy-policy__article { margin-top: 36px; }
+  .privacy-policy__intro { font-size: 15px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -47,6 +47,9 @@ le site existant dans une WebView afin de conserver exactement son interface
 mobile et son parcours de questionnaire. Elle possède ses propres dépendances;
 la compilation du site et l'image Docker ne la construisent pas.
 
+La politique de confidentialité publique est disponible sur
+`https://doctorcomtunis.com/privacy-policy` et est liée depuis le formulaire.
+
 Consulter [`mobile/README.md`](./mobile/README.md) pour démarrer le site, puis
 l'application Expo sur un simulateur ou un appareil.
 
@@ -59,12 +62,10 @@ npm run build
 
 Les tests de l’appel Claude utilisent un serveur HTTP local simulé; aucun appel Anthropic réel n’est effectué par la suite de tests.
 
-Les brouillons sont repris grâce à un cookie `HttpOnly` et restent uniquement en mémoire du processus. Ils ne survivent pas à un redémarrage. Seules les demandes finalisées sont ajoutées à Google Sheets. La durée de conservation des réponses et le texte/URL définitifs de la politique de confidentialité restent à définir avant mise en production.
+Les brouillons sont repris grâce à un cookie `HttpOnly` et restent uniquement en mémoire du processus. Ils ne survivent pas à un redémarrage. Seules les demandes finalisées sont ajoutées à Google Sheets. Les demandes finalisées doivent être supprimées manuellement au plus tard six mois après leur envoi, conformément à la politique de confidentialité publique.
 
 À la soumission, le serveur calcule le score sur 100, l'ajoute avec les réponses à Google Sheets, puis génère un plan HTML avec Claude selon la catégorie. Le PDF est conservé en mémoire du processus et servi uniquement au client porteur du cookie de reprise; il n'est pas enregistré dans Google Sheets. Définir `HIGH_VALUE_SECTORS` comme une liste de slugs séparés par des virgules si certains secteurs doivent obtenir les 34 points du critère entreprise. Sans clé Claude valide ou si la compilation échoue, la demande reste dans la feuille et le rapport passe à l'état `failed`; le client peut relancer sa génération tant que le processus est actif.
 
 ## Périmètre
 
 Les CAPTCHA, notifications et la synchronisation Odoo ne sont pas inclus. La vérification email utilise Resend, des codes à usage limité et des plafonds en mémoire; elle nécessite une seule instance active pour partager correctement les sessions et compteurs.
-
-La politique de confidentialité doit être finalisée avant tout déploiement public.
