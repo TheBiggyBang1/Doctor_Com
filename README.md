@@ -5,6 +5,10 @@
 
 # Doctor Com
 
+<p align="center">
+  <img src="./client/assets/Logo_doctorcom_powered.png" alt="Doctor Com" width="250">
+</p>
+
 A questionnaire that helps business owners figure out the next step to take in their marketing strategy. Built with React/Vite and Node/Express.
 
 **Website:** [doctorcomtunis.com](https://doctorcomtunis.com/)
