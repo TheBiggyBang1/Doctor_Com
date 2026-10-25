@@ -14,6 +14,18 @@ test("wraps report HTML in the print template and preserves safe tables and cita
   assert.match(document, /<a href="https:\/\/example\.com">Source<\/a>/);
 });
 
+test("keeps report sections and the CTA styling but strips other classes", () => {
+  const document = buildReportDocument(
+    "<section><h2>1. Contexte</h2><p class=\"injected\">Texte</p><div class=\"cta\"><a class=\"cta-primary\" href=\"https://booking.example\">Prendre rendez-vous</a><p class=\"cta-secondary\">Ou</p></div></section>",
+    "fr",
+  );
+
+  assert.match(document, /<section><h2>1\. Contexte<\/h2><p>Texte<\/p>/);
+  assert.match(document, /<div class="cta"><a class="cta-primary" href="https:\/\/booking\.example">/);
+  assert.match(document, /<p class="cta-secondary">/);
+  assert.doesNotMatch(document, /injected/);
+});
+
 test("removes active content and remote assets from model-generated HTML", () => {
   const document = buildReportDocument(
     "<p onclick=\"steal()\">Plan sûr</p><script>alert(1)</script><img src=\"https://attacker.example/pixel\"><a href=\"javascript:alert(1)\">bad</a>",

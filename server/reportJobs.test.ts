@@ -13,22 +13,24 @@ test("report job keeps its status and PDF in memory", async () => {
   assert.deepEqual(jobs.get(7), { status: "ready", pdf: Buffer.from("%PDF-test") });
 });
 
-test("report job produces a PDF from the fallback when the AI key is missing", async () => {
+test("report job alerts the team instead of delivering a report when the AI key is missing", async () => {
   const previousKey = process.env.ANTHROPIC_API_KEY;
-  const originalWarn = console.warn;
+  const originalError = console.error;
+  const alerts: Array<{ submissionId: number; category: string; reason: string }> = [];
   delete process.env.ANTHROPIC_API_KEY;
-  console.warn = () => undefined;
+  console.error = () => undefined;
   try {
-    const jobs = createReportJobs();
+    const jobs = createReportJobs(undefined, undefined, undefined, async (input) => { alerts.push(input); });
     const succeeded = await jobs.run(9, {} as QuestionnaireAnswers, "C", "en");
-    const report = jobs.get(9);
 
-    assert.equal(succeeded, true);
-    assert.equal(report?.status, "ready");
-    assert.ok(report?.pdf);
-    assert.equal(report.pdf.subarray(0, 5).toString("ascii"), "%PDF-");
+    assert.equal(succeeded, false);
+    assert.deepEqual(jobs.get(9), { status: "failed" });
+    assert.equal(alerts.length, 1);
+    assert.equal(alerts[0].submissionId, 9);
+    assert.equal(alerts[0].category, "C");
+    assert.match(alerts[0].reason, /not configured/);
   } finally {
-    console.warn = originalWarn;
+    console.error = originalError;
     if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
     else process.env.ANTHROPIC_API_KEY = previousKey;
   }
@@ -55,7 +57,12 @@ test("daily report reservations release failed writes and reset at UTC midnight"
 
 test("report job marks a failed generation without leaking provider details", async () => {
   const errors: string[] = [];
-  const jobs = createReportJobs(async () => { throw new Error("provider-secret-detail sk-ant-test-secret"); });
+  const jobs = createReportJobs(
+    async () => { throw new Error("provider-secret-detail sk-ant-test-secret"); },
+    undefined,
+    undefined,
+    async () => undefined,
+  );
   const originalConsoleError = console.error;
   console.error = (message: string) => errors.push(message);
   let succeeded: boolean;

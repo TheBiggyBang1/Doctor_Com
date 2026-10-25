@@ -3,7 +3,7 @@ import sanitizeHtml from "sanitize-html";
 import { companyLogoBuffer } from "./pdfAssets.js";
 
 const allowedTags = [
-  "a", "blockquote", "br", "code", "div", "em", "h1", "h2", "h3", "h4", "hr", "li", "ol", "p", "pre", "span", "strong", "table", "tbody", "td", "th", "thead", "tr", "ul",
+  "a", "blockquote", "br", "code", "div", "em", "h1", "h2", "h3", "h4", "hr", "li", "ol", "p", "pre", "section", "span", "strong", "table", "tbody", "td", "th", "thead", "tr", "ul",
 ];
 const maximumPdfBytes = 20_000_000;
 
@@ -14,6 +14,11 @@ export function buildReportDocument(fragment: string, language: "fr" | "en") {
       a: ["href", "title"],
       td: ["colspan", "rowspan"],
       th: ["colspan", "rowspan"],
+    },
+    allowedClasses: {
+      a: ["cta-primary"],
+      div: ["cta"],
+      p: ["cta-secondary"],
     },
     allowedSchemes: ["https", "http", "mailto"],
   });
@@ -48,6 +53,9 @@ export function buildReportDocument(fragment: string, language: "fr" | "en") {
     code, pre { font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; }
     pre { background: #f3f5f8; padding: 8pt; white-space: pre-wrap; }
     hr { border: 0; border-top: 1px solid #dce1e8; margin: 14pt 0; }
+    .cta { break-inside: avoid; border: 1px solid #dce1e8; border-top: 4px solid #00b5cd; margin: 16pt 0 0; padding: 14pt 16pt; text-align: center; }
+    .cta-primary { background: #4f2c88; border-radius: 6pt; color: #fff; display: inline-block; font-size: 11pt; font-weight: 700; padding: 9pt 20pt; text-decoration: none; }
+    .cta-secondary { color: #505968; font-size: 9pt; margin: 10pt 0 0; }
   </style>
 </head>
 <body>

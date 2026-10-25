@@ -17,7 +17,7 @@ A questionnaire that helps business owners figure out the next step to take in t
 
 ## Local setup
 
-1. Copy `.env.example` to `.env`, then fill in the Anthropic, Google Sheets and Resend keys. Set `LEAD_ALERT_EMAIL` to the address that should receive alerts for category A leads. Keep these keys in `.env`, never in the frontend. `EMAIL_CODE_SECRET` must be a random string of at least 32 bytes.
+1. Copy `.env.example` to `.env`, then fill in the Anthropic, Google Sheets and Resend keys. Set `LEAD_ALERT_EMAIL` to the address that should receive alerts for category A leads and for reports that could not be produced. Set `CTA_BOOKING_URL` (https), `CTA_WHATSAPP` and `CTA_EMAIL`: the server inserts them into the report's call to action, and no report is produced without them. `ANTHROPIC_WEB_SEARCH=false` turns off web search for category A. Keep these keys in `.env`, never in the frontend. `EMAIL_CODE_SECRET` must be a random string of at least 32 bytes.
 2. Share the Google Sheet with the service account address and enable the Google Sheets API.
 3. Verify a sending domain in Resend and publish its exact SPF/DKIM DNS records before using `RESEND_FROM` with that domain.
 4. Install Chromium for Playwright (only once):

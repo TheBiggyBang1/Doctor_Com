@@ -1,4 +1,5 @@
 import { renderHtmlReportPdf } from "./htmlPdf.js";
+import { sendReportFailureAlert } from "./leadAlert.js";
 import { generateCommunicationPlan } from "./plan.js";
 import type { LeadCategory } from "./scoring.js";
 import type { QuestionnaireAnswers } from "./validation.js";
@@ -12,6 +13,7 @@ interface ReportJob {
 
 export type PlanGenerator = typeof generateCommunicationPlan;
 export type ReportPdfCompiler = typeof renderHtmlReportPdf;
+export type ReportFailureAlert = typeof sendReportFailureAlert;
 
 function describeFailure(error: unknown) {
   const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
@@ -22,6 +24,7 @@ export function createReportJobs(
   generatePlan: PlanGenerator = generateCommunicationPlan,
   compilePdf: ReportPdfCompiler = renderHtmlReportPdf,
   now: () => number = Date.now,
+  alertTeam: ReportFailureAlert = sendReportFailureAlert,
 ) {
   const active = new Set<number>();
   const jobs = new Map<number, ReportJob>();
@@ -70,7 +73,12 @@ export function createReportJobs(
       return true;
     } catch (error) {
       jobs.set(id, { status: "failed" });
-      console.error(`Communication plan generation failed for submission ${id}: ${describeFailure(error)}`);
+      const reason = describeFailure(error);
+      console.error(`Communication plan generation failed for submission ${id}: ${reason}`);
+      // The prospect receives nothing; the team is told to follow up instead.
+      void alertTeam({ submissionId: id, answers, category, language, reason }).catch((alertError: unknown) => {
+        console.error(`Report failure alert could not be sent for submission ${id}: ${describeFailure(alertError)}`);
+      });
       return false;
     } finally {
       active.delete(id);
