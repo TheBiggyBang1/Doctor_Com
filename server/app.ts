@@ -439,7 +439,10 @@ export function createApp(
     body { margin: 0; padding: 12px; background: #f7f5fb; color: #4f2c88; font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     #status { position: sticky; top: 0; z-index: 1; margin: -12px -12px 12px; padding: 12px; background: #f7f5fb; text-align: center; }
     #pages { display: grid; width: 100%; min-width: 0; justify-items: center; gap: 12px; }
+    .page { position: relative; max-width: 100%; }
     canvas { display: block; max-width: 100%; height: auto; background: white; box-shadow: 0 2px 12px #24153a22; }
+    .page a { position: absolute; display: block; border-radius: 2px; }
+    .page a:hover, .page a:focus-visible { background: #00b5cd22; outline: 1px solid #00b5cd; }
     #retry { display: none; margin: 8px auto; padding: 12px 18px; border: 0; border-radius: 8px; background: #4f2c88; color: white; font: inherit; }
   </style>
 </head>
@@ -458,6 +461,24 @@ export function createApp(
       var renderTasks = [];
       var resizeTimer = 0;
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      // The canvas is only an image, so each PDF link annotation gets a real anchor laid over it.
+      async function addLinks(page, viewport, pageElement) {
+        var annotations = await page.getAnnotations();
+        annotations.forEach(function(annotation) {
+          if (annotation.subtype !== "Link" || !/^(https?:|mailto:)/i.test(annotation.url || "")) return;
+          var rect = viewport.convertToViewportRectangle(annotation.rect);
+          var link = document.createElement("a");
+          link.href = annotation.url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.title = annotation.url.replace(/^mailto:/i, "");
+          link.style.left = Math.min(rect[0], rect[2]) + "px";
+          link.style.top = Math.min(rect[1], rect[3]) + "px";
+          link.style.width = Math.abs(rect[2] - rect[0]) + "px";
+          link.style.height = Math.abs(rect[3] - rect[1]) + "px";
+          pageElement.appendChild(link);
+        });
+      }
       async function renderPages(pdf, version) {
         pages.replaceChildren();
         renderTasks = [];
@@ -472,7 +493,11 @@ export function createApp(
           canvas.width = Math.ceil(viewport.width * ratio);
           canvas.height = Math.ceil(viewport.height * ratio);
           canvas.style.width = viewport.width + "px";
-          pages.appendChild(canvas);
+          var pageElement = document.createElement("div");
+          pageElement.className = "page";
+          pageElement.style.width = viewport.width + "px";
+          pageElement.appendChild(canvas);
+          pages.appendChild(pageElement);
           var context = canvas.getContext("2d");
           if (!context) throw new Error("Canvas rendering is unavailable");
           var renderTask = page.render({
@@ -482,6 +507,7 @@ export function createApp(
           });
           renderTasks.push(renderTask);
           await renderTask.promise;
+          await addLinks(page, viewport, pageElement);
         }
       }
       function showRenderError(error, version) {
@@ -544,7 +570,9 @@ export function createApp(
       return;
     }
     response.setHeader("Cache-Control", "private, no-store");
-    response.setHeader("Content-Disposition", "inline; filename=plan-de-communication.pdf");
+    const filename = record.language === "en" ? "communications-plan.pdf" : "plan-de-communication.pdf";
+    const disposition = request.query.download === "1" ? "attachment" : "inline";
+    response.setHeader("Content-Disposition", `${disposition}; filename=${filename}`);
     response.type("application/pdf").send(report.pdf);
   });
 

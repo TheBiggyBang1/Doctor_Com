@@ -181,6 +181,7 @@ const messages = {
     reportRetry: "Réessayer la génération",
     reportReady: "Votre plan personnalisé est prêt.",
     reportOpen: "Ouvrir le PDF",
+    reportDownload: "Télécharger le PDF",
     reportBack: "Retour au diagnostic",
     reportLoading: "Génération de votre plan…",
     startAgain: "Commencer un nouveau diagnostic",
@@ -300,6 +301,7 @@ const messages = {
     reportRetry: "Retry plan generation",
     reportReady: "Your personalized plan is ready.",
     reportOpen: "Open the PDF",
+    reportDownload: "Download the PDF",
     reportBack: "Back to diagnostic",
     reportLoading: "Generating your plan…",
     startAgain: "Start a new diagnostic",
@@ -319,6 +321,7 @@ const stepHeadings: MessageKey[] = ["startTitle", "goalsTitle", "audienceTitle",
 const stepDescriptions: MessageKey[] = ["startBody", "goalsBody", "audienceBody", "situationBody", "budgetBody", "contactBody", "verifyEmailBody"];
 const questionnaireStepCount = 6;
 const pdfViewerPath = "/api/questionnaire/report/viewer";
+const pdfDownloadPath = "/api/questionnaire/report.pdf?download=1";
 const emailErrorKeys: Record<string, MessageKey> = {
   invalid_email: "emailInvalid",
   disposable_email: "emailDisposable",
@@ -1193,9 +1196,14 @@ function QuestionnaireApp() {
           </p>
           {(reportStatus === "pending" || reportStatus === "processing") && <p className="report-loading">{t.reportLoading}</p>}
           {reportStatus === "ready" && (
-            <button className="primary-button report-open" onClick={openPdfViewer} type="button">
-              {t.reportOpen}<span aria-hidden="true">↗</span>
-            </button>
+            <div className="report-actions">
+              <button className="primary-button report-open" onClick={openPdfViewer} type="button">
+                {t.reportOpen}<span aria-hidden="true">↗</span>
+              </button>
+              <a className="primary-button report-download" download href={pdfDownloadPath}>
+                {t.reportDownload}<span aria-hidden="true">↓</span>
+              </a>
+            </div>
           )}
           {reportStatus === "failed" && (
             <button className="primary-button" onClick={retryReport} type="button">
@@ -1209,6 +1217,7 @@ function QuestionnaireApp() {
             <header className="pdf-modal__header">
               <button className="pdf-modal__back" onClick={() => window.history.back()} type="button">← {t.reportBack}</button>
               <span>{t.reportTitle}</span>
+              <a className="pdf-modal__download" download href={pdfDownloadPath}>↓ {t.reportDownload}</a>
             </header>
             <iframe className="pdf-modal__viewer" src={pdfViewerPath} title={t.reportTitle} />
           </section>

@@ -74,7 +74,8 @@ export function generateEmailCode() {
 export function buildVerificationEmail(code: string, language: EmailLanguage) {
   const copy = language === "fr"
     ? {
-      subject: "Votre code de vérification | 5 Sens Advertising",
+      subject: `Votre code de vérification est : ${code}`,
+      preview: `Votre code de vérification est : ${code}. Il expire dans 10 minutes.`,
       title: "Confirmez votre adresse email",
       greeting: "Bonjour,",
       instruction: "Utilisez le code ci-dessous pour confirmer votre adresse et continuer votre diagnostic.",
@@ -84,7 +85,8 @@ export function buildVerificationEmail(code: string, language: EmailLanguage) {
       codeLabel: "VOTRE CODE DE VÉRIFICATION",
     }
     : {
-      subject: "Your verification code | 5 Sens Advertising",
+      subject: `Your verification code is: ${code}`,
+      preview: `Your verification code is: ${code}. It expires in 10 minutes.`,
       title: "Confirm your email address",
       greeting: "Hello,",
       instruction: "Use the code below to confirm your address and continue your diagnostic.",
@@ -96,7 +98,7 @@ export function buildVerificationEmail(code: string, language: EmailLanguage) {
 
   return {
     subject: copy.subject,
-    text: `${copy.greeting}\n\n${copy.instruction}\n\n${copy.codeLabel}: ${code}\n${copy.expiry}\n\n${copy.ignore}\n\n5 Sens Advertising`,
+    text: `${copy.preview}\n\n${copy.greeting}\n\n${copy.instruction}\n\n${copy.codeLabel}: ${code}\n${copy.expiry}\n\n${copy.ignore}\n\n5 Sens Advertising`,
     html: `<!doctype html>
 <html lang="${language}">
   <head>
@@ -106,7 +108,7 @@ export function buildVerificationEmail(code: string, language: EmailLanguage) {
     <title>${copy.subject}</title>
   </head>
   <body style="margin:0;padding:0;background:#f7f5fb;color:#4f2c88;font-family:Arial,Helvetica,sans-serif;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${copy.instruction}</div>
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${copy.preview}</div>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7f5fb;padding:36px 16px;">
       <tr><td align="center">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fff;border:1px solid #e6dff0;">

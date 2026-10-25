@@ -151,14 +151,16 @@ test("verification email content is branded and localized in French or English",
   const french = buildVerificationEmail("004281", "fr");
   const english = buildVerificationEmail("004281", "en");
 
-  assert.match(french.subject, /Votre code/);
+  assert.equal(french.subject, "Votre code de vérification est : 004281");
+  assert.equal(english.subject, "Your verification code is: 004281");
+  assert.match(french.html, /display:none[^>]*>Votre code de vérification est : 004281\./);
+  assert.match(english.text, /^Your verification code is: 004281\./);
   assert.match(french.html, /lang="fr"/);
   assert.match(french.html, /Confirmez votre adresse email/);
   assert.match(french.html, /004281/);
   assert.match(french.html, /10 minutes/);
   assert.match(french.html, /#00b5cd/i);
   assert.match(french.html, /#4f2c88/i);
-  assert.match(english.subject, /Your verification code/);
   assert.match(english.html, /lang="en"/);
   assert.match(english.html, /Confirm your email address/);
   assert.match(english.html, /004281/);
