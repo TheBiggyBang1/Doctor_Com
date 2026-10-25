@@ -1216,8 +1216,10 @@ function QuestionnaireApp() {
           <section aria-label={t.reportTitle} aria-modal="true" className="pdf-modal" role="dialog">
             <header className="pdf-modal__header">
               <button className="pdf-modal__back" onClick={() => window.history.back()} type="button">← {t.reportBack}</button>
-              <span>{t.reportTitle}</span>
-              <a className="pdf-modal__download" download href={pdfDownloadPath}>↓ {t.reportDownload}</a>
+              <span className="pdf-modal__title">{t.reportTitle}</span>
+              <a aria-label={t.reportDownload} className="pdf-modal__download" download href={pdfDownloadPath}>
+                <span aria-hidden="true">↓</span><span className="pdf-modal__download-label">{t.reportDownload}</span>
+              </a>
             </header>
             <iframe className="pdf-modal__viewer" src={pdfViewerPath} title={t.reportTitle} />
           </section>
